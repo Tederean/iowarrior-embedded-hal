@@ -1,0 +1,38 @@
+[package]
+name = "iowarrior-embedded-hal"
+version = "0.1.0"
+edition = "2021"
+authors = ["Florian Porsch"]
+license = "MIT"
+readme = "README.md"
+keywords = ["iowarrior", "iowkit", "embedded_hal", "embedded-hal-impl", "hal"]
+categories = ["embedded", "hardware-support"]
+repository = "https://github.com/Tederean/iowarrior-embedded-hal"
+description = "A Rust library that provides access to the IOWarrior GPIO, I2C, PWM, SPI and ADC peripherals."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+thiserror = "1.0"
+embedded-hal = { version = "1.0" }
+hidapi = { version = "2.6", default-features = false, features = ["windows-native", "linux-native"] }
+
+embedded-hal-0 = { version = "0.2.7", optional = true, package = "embedded-hal", features = ["unproven"] }
+
+libloading = { version = "0.8", optional = true }
+iowkit-sys = { version = "0.1", optional = true }
+static_assertions = { version = "1.1", optional = true }
+
+windows = { version = "0.58", features = ["Win32_Devices_HumanInterfaceDevice"], optional = true }
+itertools = { version = "0.13", optional = true }
+
+nix = { version = "0.29", features = ["ioctl"], optional = true }
+glob = { version = "0.3" , optional = true }
+
+[features]
+default = ["iowkit"]
+embedded-hal-0 = ["dep:embedded-hal-0"]
+iowkit = ["dep:libloading", "dep:iowkit-sys", "dep:static_assertions"]
+usbhid = ["dep:itertools", "dep:windows"]
+ioctrl = ["dep:itertools", "dep:nix", "dep:glob"]
+

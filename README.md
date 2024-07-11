@@ -15,8 +15,6 @@ There are three different backends available to interact with the IOWarrior boar
 
 3. **ioctrl**: This is also an experimental backend and is only available on Linux. It is a pure Rust implementation and interacts directly with the ioctrl kernel interface.
 
-The backends can be selected as a Rust feature. By default, iowkit is selected.
-
 ## License
 
 <sup>

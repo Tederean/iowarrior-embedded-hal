@@ -16,6 +16,7 @@ impl fmt::Display for Pipe {
 
 impl Pipe {
     #[inline]
+    #[allow(dead_code)]
     pub fn get_value(&self) -> u8 {
         *self as u8
     }

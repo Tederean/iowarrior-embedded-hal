@@ -80,7 +80,7 @@ fn get_iowarrior_internal(
 }
 
 fn get_hid_path(device_info: &DeviceInfo) -> Result<&str, InitializationError> {
-    device_info.path().to_str().map_err(|x| {
+    device_info.path().to_str().map_err(|_| {
         InitializationError::InternalError("Error converting USB HID path.".to_owned())
     })
 }

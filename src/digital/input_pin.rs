@@ -73,10 +73,6 @@ impl fmt::Display for InputPin {
 impl Drop for InputPin {
     #[inline]
     fn drop(&mut self) {
-        peripheral_service::disable_gpio(
-            &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
-            self.pin,
-        );
+        peripheral_service::disable_gpio(&mut self.mut_data_refcell.borrow_mut(), self.pin);
     }
 }

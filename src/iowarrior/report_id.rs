@@ -11,9 +11,6 @@ pub enum ReportId {
     PwmParameters = 0x21,
     SpiSetup = 0x08,
     SpiTransfer = 0x09,
-    TimerSetup = 0x28,
-    TimerDataA = 0x29,
-    TimerDataB = 0x2A,
     GpioReadWrite = 0x00,
     GpioSpecialRead = 0xFF,
 }

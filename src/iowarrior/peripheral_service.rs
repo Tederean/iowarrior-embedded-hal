@@ -15,7 +15,7 @@ pub fn get_used_pins(
     mut_data
         .pins_in_use
         .iter()
-        .filter(|x| x.peripheral == Some(Peripheral::SPI))
+        .filter(|x| x.peripheral == Some(peripheral))
         .map(|x| x.clone())
         .collect()
 }
@@ -86,7 +86,6 @@ pub fn cleanup_dangling_modules(
 }
 
 pub fn set_pin_output(
-    data: &IOWarriorData,
     mut_data: &mut RefMut<IOWarriorMutData>,
     pin_state: PinState,
     pin: u8,
@@ -108,8 +107,8 @@ pub fn set_pin_output(
     }
 }
 
-pub fn disable_gpio(data: &IOWarriorData, mut_data: &mut RefMut<IOWarriorMutData>, pin: u8) {
-    match set_pin_output(&data, mut_data, PinState::High, pin) {
+pub fn disable_gpio(mut_data: &mut RefMut<IOWarriorMutData>, pin: u8) {
+    match set_pin_output(mut_data, PinState::High, pin) {
         Ok(_) => {}
         Err(_) => { /* Ignore error. Every following pin and peripheral can handle this. */ }
     };

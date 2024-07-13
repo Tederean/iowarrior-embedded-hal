@@ -7,7 +7,7 @@ pub struct ADCSample {
     pub value: u16,
 }
 
-impl ADCSample {
+impl fmt::Display for ADCSample {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }

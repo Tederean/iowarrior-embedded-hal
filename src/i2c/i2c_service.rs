@@ -23,7 +23,7 @@ pub fn new(
 
     peripheral_service::precheck_peripheral(&data, &mut mut_data, Peripheral::I2C, &i2c_pins)?;
 
-    send_enable_i2c(data, &mut mut_data, &i2c_config, &i2c_pins)
+    send_enable_i2c(data, &mut mut_data, &i2c_config)
         .map_err(|x| PeripheralSetupError::ErrorUSB(x))?;
 
     peripheral_service::post_enable(&mut mut_data, &i2c_pins, Peripheral::I2C);
@@ -56,7 +56,6 @@ fn send_enable_i2c(
     data: &IOWarriorData,
     mut_data: &mut RefMut<IOWarriorMutData>,
     i2c_config: &I2CConfig,
-    i2c_pins: &Vec<u8>,
 ) -> Result<(), HidError> {
     let mut report = data.create_report(Pipe::I2CMode);
 

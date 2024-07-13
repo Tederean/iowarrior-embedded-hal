@@ -78,11 +78,6 @@ impl fmt::Display for PWMChannel {
 }
 
 impl PWMChannel {
-    #[inline]
-    pub(crate) const fn get_value(&self) -> u8 {
-        *self as u8
-    }
-
     pub fn from_u8(channel: u8) -> PWMChannel {
         match channel {
             1 => PWMChannel::First,

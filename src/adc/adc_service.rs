@@ -56,8 +56,6 @@ pub fn new(
 
             peripheral_service::post_enable(&mut mut_data, &adc_pins, Peripheral::ADC);
 
-            let adc_data_refcell = Rc::new(RefCell::new(adc_data));
-
             Ok(ADC {
                 data: data.clone(),
                 mut_data_refcell: mut_data_refcell.clone(),
@@ -321,7 +319,8 @@ pub fn pulse_in(
                 PulseInState::WaitingFor1stChange => {
                     if actual_pin_state == pin_state {
                         let elapsed_samples_1st_change =
-                            (report_index * adc_data.report_channel_count as usize) + channel_index - 1;
+                            (report_index * adc_data.report_channel_count as usize) + channel_index
+                                - 1;
 
                         state = PulseInState::WaitingFor2ndChange {
                             elapsed_samples_1st_change,
@@ -333,7 +332,8 @@ pub fn pulse_in(
                 } => {
                     if actual_pin_state.not() == pin_state {
                         let elapsed_samples_2nd_change =
-                            (report_index * adc_data.report_channel_count as usize) + channel_index - 1;
+                            (report_index * adc_data.report_channel_count as usize) + channel_index
+                                - 1;
 
                         let elapsed_samples =
                             elapsed_samples_2nd_change - elapsed_samples_1st_change;
@@ -378,6 +378,8 @@ fn read_samples_report(
         data.create_report(Pipe::ADCMode),
     )
     .map_err(|x| ADCReadError::ErrorUSB(x))?;
+
+    assert_eq!(report.buffer[0], ReportId::AdcRead.get_value());
 
     update_packet_number(last_packet, report.buffer[1])?;
 

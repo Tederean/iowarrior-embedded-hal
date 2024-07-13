@@ -11,7 +11,7 @@ const IOWKIT: &str = "iowkit.dll";
 const IOWKIT: &str = "libiowkit.so";
 
 pub fn get_iowarriors() -> Result<Vec<IOWarrior>, InitializationError> {
-    let iowkit = unsafe { iowkit_sys::Iowkit::new(IOWKIT) }.map_err(|x| {
+    let iowkit = unsafe { iowkit_sys::Iowkit::new(IOWKIT) }.map_err(|_| {
         InitializationError::InternalError("Error loading iowkit library.".to_owned())
     })?;
 

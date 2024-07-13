@@ -104,12 +104,12 @@ impl PWM {
     }
 
     #[inline]
-    fn get_duty_cycle(&self) -> u16 {
+    pub fn get_duty_cycle(&self) -> u16 {
         self.pwm_data_refcell.borrow().get_duty_cycle(self.channel)
     }
 
     #[inline]
-    fn get_max_duty_cycle(&self) -> u16 {
+    pub fn get_max_duty_cycle(&self) -> u16 {
         self.pwm_data_refcell.borrow().max_duty_cycle
     }
 }

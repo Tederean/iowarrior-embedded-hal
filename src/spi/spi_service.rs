@@ -225,7 +225,7 @@ pub fn read_data(
             use_data_ready_pin,
             chip_select_stays_active,
         )?;
-        read_report(&data, mut_data, &spi_data, read_chunk)?;
+        read_report(&data, mut_data, read_chunk)?;
     }
 
     Ok(())
@@ -260,7 +260,6 @@ pub fn write_data(
         read_report(
             &data,
             mut_data,
-            &spi_data,
             &mut dummy_read_buffer[0..write_chunk.len()],
         )?;
     }
@@ -335,7 +334,7 @@ pub fn transfer_data_with_same_size(
             use_data_ready_pin,
             chip_select_stays_active,
         )?;
-        read_report(&data, mut_data, &spi_data, read)?;
+        read_report(&data, mut_data, read)?;
     }
 
     Ok(())
@@ -365,7 +364,7 @@ pub fn transfer_data_in_place(
             use_data_ready_pin,
             chip_select_stays_active,
         )?;
-        read_report(&data, mut_data, &spi_data, chunk)?;
+        read_report(&data, mut_data, chunk)?;
     }
 
     Ok(())
@@ -431,7 +430,6 @@ fn write_report(
 fn read_report(
     data: &Rc<IOWarriorData>,
     mut_data: &mut RefMut<IOWarriorMutData>,
-    spi_data: &SPIData,
     read_chunk: &mut [u8],
 ) -> Result<(), SPIError> {
     let report = communication_service::read_report(

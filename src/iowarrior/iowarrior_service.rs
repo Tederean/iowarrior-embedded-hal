@@ -84,7 +84,7 @@ fn get_iowarrior56_subtype(
         Ok(_) => Ok(IOWarriorType::IOWarrior56),
         Err(error) => {
             match error {
-                HidError::IncompleteSendError { sent, all } => {
+                HidError::IncompleteSendError { sent, all: _ } => {
                     if sent == 0 {
                         return Ok(IOWarriorType::IOWarrior56Dongle);
                     }
@@ -110,7 +110,7 @@ fn get_iowarrior28_subtype(
         Ok(_) => Ok(IOWarriorType::IOWarrior28),
         Err(error) => {
             match error {
-                HidError::IncompleteSendError { sent, all } => {
+                HidError::IncompleteSendError { sent, all: _ } => {
                     if sent == 0 {
                         return Ok(IOWarriorType::IOWarrior28Dongle);
                     }

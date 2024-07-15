@@ -1,5 +1,5 @@
 use crate::adc::ADCChannel;
-use hidapi::HidError;
+use crate::iowarrior::HidError;
 use thiserror::Error;
 
 #[non_exhaustive]

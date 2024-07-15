@@ -1,14 +1,12 @@
 use crate::bits::Bit::{Bit1, Bit2, Bit3, Bit6, Bit7};
 use crate::bits::Bitmasking;
-use crate::communication::communication_service;
 use crate::iowarrior::{
-    peripheral_service, IOWarriorData, IOWarriorMutData, Peripheral, PeripheralSetupError, Pipe,
-    Report, ReportId,
+    peripheral_service, HidError, IOWarriorData, IOWarriorMutData, Peripheral,
+    PeripheralSetupError, PipeName, Report, ReportId,
 };
 use crate::spi::spi_data::{IOWarriorSPIType, SPIData};
 use crate::spi::{SPIConfig, SPIError, SPIMode, SPI};
 use crate::{iowarrior::IOWarriorType, pin};
-use hidapi::HidError;
 use std::cell::{RefCell, RefMut};
 use std::cmp::Ordering;
 use std::iter;
@@ -137,7 +135,7 @@ fn send_enable_spi(
     mut_data: &mut RefMut<IOWarriorMutData>,
     spi_data: &SPIData,
 ) -> Result<(), HidError> {
-    let mut report = data.create_report(Pipe::SpecialMode);
+    let mut report = data.create_report(PipeName::SpecialMode);
 
     report.buffer[0] = ReportId::SpiSetup.get_value();
     report.buffer[1] = 0x01;
@@ -196,7 +194,7 @@ fn send_enable_spi(
         }
     }
 
-    communication_service::write_report(&mut mut_data.communication_data, &mut report)
+    mut_data.write_report(&mut report)
 }
 
 pub fn read_data(
@@ -388,7 +386,7 @@ fn write_report(
 ) -> Result<(), SPIError> {
     let mut report = Report {
         buffer: Vec::with_capacity(data.special_report_size),
-        pipe: Pipe::SpecialMode,
+        pipe: PipeName::SpecialMode,
     };
 
     report.buffer.push(ReportId::SpiTransfer.get_value());
@@ -423,7 +421,8 @@ fn write_report(
         .buffer
         .extend(iter::repeat(0u8).take(data.special_report_size - report.buffer.len()));
 
-    communication_service::write_report(&mut mut_data.communication_data, &report)
+    mut_data
+        .write_report(&mut report)
         .map_err(|x| SPIError::ErrorUSB(x))
 }
 
@@ -432,11 +431,11 @@ fn read_report(
     mut_data: &mut RefMut<IOWarriorMutData>,
     read_chunk: &mut [u8],
 ) -> Result<(), SPIError> {
-    let report = communication_service::read_report(
-        &mut mut_data.communication_data,
-        data.create_report(Pipe::SpecialMode),
-    )
-    .map_err(|x| SPIError::ErrorUSB(x))?;
+    let mut report = data.create_report(PipeName::SpecialMode);
+
+    mut_data
+        .read_report(&mut report)
+        .map_err(|x| SPIError::ErrorUSB(x))?;
 
     assert_eq!(report.buffer[0], ReportId::SpiTransfer.get_value());
 

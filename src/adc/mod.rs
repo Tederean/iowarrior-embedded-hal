@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 mod adc;
 mod adc_config;
 mod adc_data;

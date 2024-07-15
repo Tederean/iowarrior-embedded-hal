@@ -24,7 +24,7 @@ impl fmt::Display for IOWarrior {
 
 impl IOWarrior {
     #[inline]
-    pub fn get_revision(&self) -> u16 {
+    pub fn get_revision(&self) -> Option<u16> {
         self.data.device_revision
     }
 

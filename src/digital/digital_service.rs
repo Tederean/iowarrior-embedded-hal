@@ -1,9 +1,8 @@
 use crate::bits::Bit;
 use crate::bits::Bitmasking;
-use crate::communication::communication_service;
 use crate::digital::{InputPin, OutputPin, PinError, PinSetupError};
 use crate::iowarrior::{
-    peripheral_service, IOWarriorData, IOWarriorMutData, IOWarriorType, Pipe, UsedPin,
+    peripheral_service, IOWarriorData, IOWarriorMutData, IOWarriorType, PipeName, UsedPin,
 };
 use embedded_hal::digital::PinState;
 use std::cell::{RefCell, RefMut};
@@ -87,18 +86,14 @@ pub fn is_pin_input_state(
     pin: u8,
     expected_pin_state: PinState,
 ) -> Result<bool, PinError> {
-    let report = communication_service::read_report_non_blocking(
-        &mut mut_data.communication_data,
-        data.create_report(Pipe::IOPins),
-    )
-    .map_err(|x| PinError::ErrorUSB(x))?;
+    let mut report = data.create_report(PipeName::IOPins);
 
-    match report {
-        None => {}
-        Some(report) => {
-            mut_data.pins_read_report = report;
-        }
-    };
+    if mut_data
+        .read_report_non_blocking(&mut report)
+        .map_err(|x| PinError::ErrorUSB(x))?
+    {
+        mut_data.pins_read_report = report;
+    }
 
     let byte_index = ((pin as usize) / 8usize) + 1;
     let bit_index = Bit::from_u8(pin % 8u8);

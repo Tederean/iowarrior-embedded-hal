@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 mod pwm;
 mod pwm_config;
 mod pwm_data;

@@ -1,10 +1,10 @@
-use crate::iowarrior::Pipe;
+use crate::iowarrior::PipeName;
 use std::fmt;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Report {
     pub buffer: Vec<u8>,
-    pub pipe: Pipe,
+    pub pipe: PipeName,
 }
 
 impl fmt::Display for Report {

@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 mod spi;
 mod spi_config;
 mod spi_data;

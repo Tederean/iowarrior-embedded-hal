@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 mod i2c;
 mod i2c_config;
 mod i2c_error;

@@ -1,5 +1,5 @@
+use crate::iowarrior::HidError;
 use embedded_hal::i2c::NoAcknowledgeSource;
-use hidapi::HidError;
 use thiserror::Error;
 
 #[non_exhaustive]

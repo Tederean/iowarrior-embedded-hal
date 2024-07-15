@@ -3,14 +3,12 @@ use crate::adc::{
     ADCChannel, ADCConfig, ADCData, ADCPulseInError, ADCReadError, IOW28IOW100ADCConfig,
     IOW56ADCConfig, IOWarriorADCType, SampleRate1ch, SampleRate2ch, SampleRate4ch, ADC,
 };
-use crate::communication::communication_service;
 use crate::iowarrior::{
-    peripheral_service, IOWarriorData, IOWarriorMutData, Peripheral, PeripheralSetupError, Pipe,
-    ReportId,
+    peripheral_service, HidError, IOWarriorData, IOWarriorMutData, Peripheral,
+    PeripheralSetupError, PipeName, ReportId,
 };
 use crate::{iowarrior::IOWarriorType, pin};
 use embedded_hal::digital::PinState;
-use hidapi::HidError;
 use std::cell::{RefCell, RefMut};
 use std::ops::Not;
 use std::rc::Rc;
@@ -69,7 +67,7 @@ fn get_adc_type(data: &Rc<IOWarriorData>) -> Option<IOWarriorADCType> {
     match data.device_type {
         IOWarriorType::IOWarrior28 => Some(IOWarriorADCType::IOWarrior28),
         IOWarriorType::IOWarrior100 => Some(IOWarriorADCType::IOWarrior100),
-        IOWarriorType::IOWarrior56 => match data.device_revision >= 0x2000 {
+        IOWarriorType::IOWarrior56 => match data.device_revision.unwrap_or(0) >= 0x2000 {
             true => Some(IOWarriorADCType::IOWarrior56),
             false => None,
         },
@@ -231,7 +229,7 @@ fn send_enable_adc(
     mut_data: &mut RefMut<IOWarriorMutData>,
     adc_data: &ADCData,
 ) -> Result<(), HidError> {
-    let mut report = data.create_report(Pipe::ADCMode);
+    let mut report = data.create_report(PipeName::ADCMode);
 
     report.buffer[0] = ReportId::AdcSetup.get_value();
     report.buffer[1] = 0x01;
@@ -252,7 +250,7 @@ fn send_enable_adc(
         }
     }
 
-    communication_service::write_report(&mut mut_data.communication_data, &report)
+    mut_data.write_report(&report)
 }
 
 pub fn read_samples(
@@ -373,11 +371,11 @@ fn read_samples_report(
     buffer: &mut [Option<ADCSample>],
     last_packet: &mut Option<u8>,
 ) -> Result<(), ADCReadError> {
-    let report = communication_service::read_report(
-        &mut mut_data.communication_data,
-        data.create_report(Pipe::ADCMode),
-    )
-    .map_err(|x| ADCReadError::ErrorUSB(x))?;
+    let mut report = data.create_report(PipeName::ADCMode);
+
+    mut_data
+        .read_report(&mut report)
+        .map_err(|x| ADCReadError::ErrorUSB(x))?;
 
     assert_eq!(report.buffer[0], ReportId::AdcRead.get_value());
 

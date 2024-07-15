@@ -1,9 +1,9 @@
-use crate::iowarrior::{IOWarriorType, Pipe, Report};
+use crate::iowarrior::{IOWarriorType, PipeName, Report};
 use std::fmt;
 
 #[derive(Debug)]
 pub struct IOWarriorData {
-    pub device_revision: u16,
+    pub device_revision: Option<u16>,
     pub device_serial: String,
     pub device_type: IOWarriorType,
     pub standard_report_size: usize,
@@ -11,18 +11,18 @@ pub struct IOWarriorData {
 }
 
 impl IOWarriorData {
-    pub fn create_report(&self, pipe: Pipe) -> Report {
+    pub fn create_report(&self, pipe_name: PipeName) -> Report {
         Report {
-            buffer: match pipe {
-                Pipe::IOPins => {
+            buffer: match pipe_name {
+                PipeName::IOPins => {
                     vec![0u8; self.standard_report_size]
                 }
 
-                Pipe::SpecialMode | Pipe::I2CMode | Pipe::ADCMode => {
+                PipeName::SpecialMode | PipeName::I2CMode | PipeName::ADCMode => {
                     vec![0u8; self.special_report_size]
                 }
             },
-            pipe,
+            pipe: pipe_name,
         }
     }
 }

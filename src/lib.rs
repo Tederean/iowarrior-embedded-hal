@@ -1,13 +1,14 @@
 pub mod adc;
+pub mod backend;
 pub mod bits;
-pub mod communication;
 pub mod delay;
 pub mod digital;
 pub mod i2c;
 pub mod iowarrior;
 pub mod pwm;
 pub mod spi;
-pub use communication::initialization_service::*;
+
+pub use self::iowarrior::iowarrior_service::get_iowarriors;
 
 #[macro_export]
 macro_rules! pin {

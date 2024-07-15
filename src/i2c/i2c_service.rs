@@ -1,13 +1,12 @@
 use crate::bits::Bit::{Bit0, Bit6, Bit7};
 use crate::bits::Bitmasking;
-use crate::communication::communication_service;
 use crate::i2c::{I2CConfig, I2CError, I2C};
 use crate::iowarrior::{
-    peripheral_service, IOWarriorMutData, IOWarriorType, Peripheral, PeripheralSetupError, Pipe,
+    peripheral_service, HidError, IOWarriorMutData, IOWarriorType, Peripheral,
+    PeripheralSetupError, PipeName,
 };
 use crate::iowarrior::{IOWarriorData, Report, ReportId};
 use crate::pin;
-use hidapi::HidError;
 use std::cell::{RefCell, RefMut};
 use std::iter;
 use std::rc::Rc;
@@ -57,7 +56,7 @@ fn send_enable_i2c(
     mut_data: &mut RefMut<IOWarriorMutData>,
     i2c_config: &I2CConfig,
 ) -> Result<(), HidError> {
-    let mut report = data.create_report(Pipe::I2CMode);
+    let mut report = data.create_report(PipeName::I2CMode);
 
     report.buffer[0] = ReportId::I2cSetup.get_value();
     report.buffer[1] = 0x01;
@@ -77,7 +76,7 @@ fn send_enable_i2c(
         | IOWarriorType::IOWarrior28L => {}
     }
 
-    communication_service::write_report(&mut mut_data.communication_data, &mut report)
+    mut_data.write_report(&mut report)
 }
 
 pub fn write_data(
@@ -95,7 +94,7 @@ pub fn write_data(
 
     let mut report = Report {
         buffer: Vec::with_capacity(data.special_report_size),
-        pipe: Pipe::I2CMode,
+        pipe: PipeName::I2CMode,
     };
 
     for (index, chunk) in chunk_iterator.enumerate() {
@@ -128,7 +127,8 @@ pub fn write_data(
             .buffer
             .extend(iter::repeat(0u8).take(data.special_report_size - report.buffer.len()));
 
-        communication_service::write_report(&mut mut_data.communication_data, &report)
+        mut_data
+            .write_report(&report)
             .map_err(|x| I2CError::ErrorUSB(x))?;
     }
 
@@ -152,7 +152,7 @@ pub fn read_data(
         let chunk_length = chunk.len() as u8;
 
         {
-            let mut report = data.create_report(Pipe::I2CMode);
+            let mut report = data.create_report(PipeName::I2CMode);
 
             report.buffer[0] = report_id.get_value();
             report.buffer[1] = chunk_length;
@@ -165,7 +165,8 @@ pub fn read_data(
                 value
             };
 
-            communication_service::write_report(&mut mut_data.communication_data, &report)
+            mut_data
+                .write_report(&report)
                 .map_err(|x| I2CError::ErrorUSB(x))?;
         }
 
@@ -184,11 +185,11 @@ fn read_report(
     mut_data: &mut RefMut<IOWarriorMutData>,
     report_id: ReportId,
 ) -> Result<Report, I2CError> {
-    let report = communication_service::read_report(
-        &mut mut_data.communication_data,
-        data.create_report(Pipe::I2CMode),
-    )
-    .map_err(|x| I2CError::ErrorUSB(x))?;
+    let mut report = data.create_report(PipeName::I2CMode);
+
+    mut_data
+        .read_report(&mut report)
+        .map_err(|x| I2CError::ErrorUSB(x))?;
 
     assert_eq!(report.buffer[0], report_id.get_value());
 

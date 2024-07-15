@@ -1,41 +1,166 @@
-use crate::communication::{communication_service, CommunicationData};
+use crate::backend::PipeInfo;
 use crate::iowarrior::{
-    IOWarrior, IOWarriorData, IOWarriorMutData, IOWarriorType, Pipe, Report, ReportId,
+    HidError, IOWarrior, IOWarriorData, IOWarriorInfo, IOWarriorMutData, IOWarriorType, Pipe,
+    PipeName, Report, ReportId,
 };
-use hidapi::HidError;
+use itertools::Itertools;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub fn create_iowarrior(
-    device_type: IOWarriorType,
-    device_revision: u16,
+pub fn get_iowarriors() -> Result<Vec<IOWarriorInfo>, HidError> {
+    let pipe_map = PipeInfo::collect()?
+        .into_iter()
+        .filter_map(|x| {
+            let device_serial = match x.serial_number() {
+                None => return None,
+                Some(x) => x.to_string(),
+            };
+
+            Some((x, device_serial))
+        })
+        .into_group_map_by(|x| x.1.clone());
+
+    Ok(pipe_map
+        .into_iter()
+        .filter_map(|(device_serial, mut pipes)| {
+            pipes.sort_by_key(|x| x.0.pipe());
+            pipes.reverse();
+
+            let pipe_0 = match pipes.pop() {
+                None => return None,
+                Some(x) => match x.0.pipe() {
+                    0 => x.0,
+                    _ => return None,
+                },
+            };
+
+            let pipe_1 = match pipes.pop() {
+                None => return None,
+                Some(x) => match x.0.pipe() {
+                    1 => x.0,
+                    _ => return None,
+                },
+            };
+
+            let pipe_2 = match pipes.pop() {
+                None => None,
+                Some(x) => match x.0.pipe() {
+                    2 => Some(x.0),
+                    _ => return None,
+                },
+            };
+
+            let pipe_3 = match pipes.pop() {
+                None => None,
+                Some(x) => match x.0.pipe() {
+                    3 => Some(x.0),
+                    _ => return None,
+                },
+            };
+
+            let device_type = match IOWarriorType::from_device_product_id(pipe_0.product_id()) {
+                None => return None,
+                Some(x) => x,
+            };
+
+            match (&pipe_2, &pipe_3, device_type.pipe_count()) {
+                (Some(_), Some(_), 4) => {}
+                (None, None, 2) => {}
+                _ => return None,
+            };
+
+            let possible_device_types = match device_type {
+                IOWarriorType::IOWarrior40
+                | IOWarriorType::IOWarrior24
+                | IOWarriorType::IOWarrior24PowerVampire
+                | IOWarriorType::IOWarrior28L
+                | IOWarriorType::IOWarrior100 => vec![device_type],
+                IOWarriorType::IOWarrior28 | IOWarriorType::IOWarrior28Dongle => {
+                    vec![IOWarriorType::IOWarrior28, IOWarriorType::IOWarrior28Dongle]
+                }
+                IOWarriorType::IOWarrior56 | IOWarriorType::IOWarrior56Dongle => {
+                    vec![IOWarriorType::IOWarrior56, IOWarriorType::IOWarrior56Dongle]
+                }
+            };
+
+            Some(IOWarriorInfo::new(
+                pipe_0,
+                pipe_1,
+                pipe_2,
+                pipe_3,
+                device_serial,
+                device_type,
+                possible_device_types,
+            ))
+        })
+        .collect())
+}
+
+pub(crate) fn open_iowarrior(
+    pipe_info_0: PipeInfo,
+    pipe_info_1: PipeInfo,
+    pipe_info_2: Option<PipeInfo>,
+    pipe_info_3: Option<PipeInfo>,
     device_serial: String,
-    mut communication_data: CommunicationData,
+    device_type: IOWarriorType,
 ) -> Result<IOWarrior, HidError> {
+    // TODO Check if already opened, create Drop function in IOWarriorMutData
+
+    let mut pipe_impl_0 = pipe_info_0.open()?;
+    let pipe_impl_1 = pipe_info_1.open()?;
+
+    let pipe_impl_2 = match pipe_info_2 {
+        None => None,
+        Some(x) => Some(x.open()?),
+    };
+
+    let pipe_impl_3 = match pipe_info_3 {
+        None => None,
+        Some(x) => Some(x.open()?),
+    };
+
+    let device_revision = pipe_impl_0.revision()?;
+
+    let standard_report_size = get_standard_report_size(device_type);
+    let special_report_size = get_special_report_size(device_type);
+
+    let pipe_0 = Pipe::new(pipe_impl_0, PipeName::IOPins, standard_report_size);
+    let mut pipe_1 = Pipe::new(pipe_impl_1, PipeName::SpecialMode, special_report_size);
+    let pipe_2 = pipe_impl_2.map(|x| Pipe::new(x, PipeName::I2CMode, special_report_size));
+    let mut pipe_3 = pipe_impl_3.map(|x| Pipe::new(x, PipeName::ADCMode, special_report_size));
+
     let mut data = IOWarriorData {
         device_serial,
         device_revision,
         device_type,
-        standard_report_size: get_standard_report_size(device_type),
-        special_report_size: get_special_report_size(device_type),
+        standard_report_size,
+        special_report_size,
     };
 
     if data.device_type == IOWarriorType::IOWarrior56 {
-        data.device_type = get_iowarrior56_subtype(&data, &mut communication_data)?;
+        data.device_type = get_iowarrior56_subtype(&mut pipe_1)?;
     }
 
     if data.device_type == IOWarriorType::IOWarrior28 {
-        data.device_type = get_iowarrior28_subtype(&data, &mut communication_data)?;
+        match &mut pipe_3 {
+            None => {}
+            Some(x) => {
+                data.device_type = get_iowarrior28_subtype(x)?;
+            }
+        }
     }
 
-    let pins_report = get_pins_report(&data, &mut communication_data)?;
+    let pins_report = get_pins_report(&data, &mut pipe_1)?;
 
     let mut_data = IOWarriorMutData {
         pins_in_use: vec![],
         dangling_peripherals: vec![],
         pins_write_report: pins_report.clone(),
         pins_read_report: pins_report,
-        communication_data,
+        pipe_0,
+        pipe_1,
+        pipe_2,
+        pipe_3,
     };
 
     Ok(IOWarrior {
@@ -71,16 +196,13 @@ fn get_special_report_size(device_type: IOWarriorType) -> usize {
     }
 }
 
-fn get_iowarrior56_subtype(
-    data: &IOWarriorData,
-    communication_data: &mut CommunicationData,
-) -> Result<IOWarriorType, HidError> {
-    let mut report = data.create_report(Pipe::SpecialMode);
+fn get_iowarrior56_subtype(pipe_1_special: &mut Pipe) -> Result<IOWarriorType, HidError> {
+    let mut report = pipe_1_special.create_report();
 
     report.buffer[0] = ReportId::AdcSetup.get_value();
     report.buffer[1] = 0x00;
 
-    match communication_service::write_report(communication_data, &report) {
+    match pipe_1_special.write_report(&report) {
         Ok(_) => Ok(IOWarriorType::IOWarrior56),
         Err(error) => {
             match error {
@@ -97,16 +219,13 @@ fn get_iowarrior56_subtype(
     }
 }
 
-fn get_iowarrior28_subtype(
-    data: &IOWarriorData,
-    communication_data: &mut CommunicationData,
-) -> Result<IOWarriorType, HidError> {
-    let mut report = data.create_report(Pipe::ADCMode);
+fn get_iowarrior28_subtype(pipe_3_adc: &mut Pipe) -> Result<IOWarriorType, HidError> {
+    let mut report = pipe_3_adc.create_report();
 
     report.buffer[0] = ReportId::AdcSetup.get_value();
     report.buffer[1] = 0x00;
 
-    match communication_service::write_report(communication_data, &mut report) {
+    match pipe_3_adc.write_report(&mut report) {
         Ok(_) => Ok(IOWarriorType::IOWarrior28),
         Err(error) => {
             match error {
@@ -123,28 +242,24 @@ fn get_iowarrior28_subtype(
     }
 }
 
-fn get_pins_report(
-    data: &IOWarriorData,
-    communication_data: &mut CommunicationData,
-) -> Result<Report, HidError> {
+fn get_pins_report(data: &IOWarriorData, pipe_1_special: &mut Pipe) -> Result<Report, HidError> {
     {
-        let mut report = data.create_report(Pipe::SpecialMode);
+        let mut report = pipe_1_special.create_report();
 
         report.buffer[0] = ReportId::GpioSpecialRead.get_value();
 
-        communication_service::write_report(communication_data, &report)?;
+        pipe_1_special.write_report(&report)?;
     }
 
     {
-        let mut report = communication_service::read_report(
-            communication_data,
-            data.create_report(Pipe::SpecialMode),
-        )?;
+        let mut report = pipe_1_special.create_report();
+
+        pipe_1_special.read_report(&mut report)?;
 
         report.buffer[0] = ReportId::GpioReadWrite.get_value();
 
         Ok(Report {
-            pipe: Pipe::IOPins,
+            pipe: PipeName::IOPins,
             buffer: report
                 .buffer
                 .iter()

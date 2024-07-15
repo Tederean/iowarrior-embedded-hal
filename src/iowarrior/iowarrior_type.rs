@@ -14,6 +14,7 @@ pub enum IOWarriorType {
 }
 
 impl IOWarriorType {
+    #[inline]
     pub fn from_device_product_id(device_product_id: u16) -> Option<IOWarriorType> {
         match device_product_id {
             5376 => Some(IOWarriorType::IOWarrior40),
@@ -24,6 +25,21 @@ impl IOWarriorType {
             5381 => Some(IOWarriorType::IOWarrior28L),
             5382 => Some(IOWarriorType::IOWarrior100),
             _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn pipe_count(&self) -> u8 {
+        match self {
+            IOWarriorType::IOWarrior24
+            | IOWarriorType::IOWarrior40
+            | IOWarriorType::IOWarrior24PowerVampire
+            | IOWarriorType::IOWarrior28L => 2,
+            IOWarriorType::IOWarrior56
+            | IOWarriorType::IOWarrior56Dongle
+            | IOWarriorType::IOWarrior28
+            | IOWarriorType::IOWarrior28Dongle
+            | IOWarriorType::IOWarrior100 => 4,
         }
     }
 }

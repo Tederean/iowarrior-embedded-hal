@@ -1,11 +1,10 @@
 use crate::bits::Bit;
 use crate::bits::Bitmasking;
-use crate::communication::{communication_service, CommunicationData};
 use crate::iowarrior::{
-    IOWarriorData, IOWarriorMutData, Peripheral, PeripheralSetupError, Pipe, ReportId, UsedPin,
+    HidError, IOWarriorData, IOWarriorMutData, Peripheral, PeripheralSetupError, PipeName,
+    ReportId, UsedPin,
 };
 use embedded_hal::digital::PinState;
-use hidapi::HidError;
 use std::cell::RefMut;
 
 pub fn get_used_pins(
@@ -72,10 +71,10 @@ pub fn cleanup_dangling_modules(
     if !mut_data.dangling_peripherals.is_empty() {
         for x in mut_data.dangling_peripherals.to_vec() {
             match x {
-                Peripheral::I2C => send_disable_i2c(&data, &mut mut_data.communication_data),
-                Peripheral::PWM => send_disable_pwm(&data, &mut mut_data.communication_data),
-                Peripheral::SPI => send_disable_spi(&data, &mut mut_data.communication_data),
-                Peripheral::ADC => send_disable_adc(&data, &mut mut_data.communication_data),
+                Peripheral::I2C => send_disable_i2c(&data, mut_data),
+                Peripheral::PWM => send_disable_pwm(&data, mut_data),
+                Peripheral::SPI => send_disable_spi(&data, mut_data),
+                Peripheral::ADC => send_disable_adc(&data, mut_data),
             }?;
 
             mut_data.dangling_peripherals.retain(|y| *y != x);
@@ -97,8 +96,7 @@ pub fn set_pin_output(
 
     pins_write_report.buffer[byte_index].set_bit(bit_index, bool::from(pin_state));
 
-    match communication_service::write_report(&mut mut_data.communication_data, &pins_write_report)
-    {
+    match mut_data.write_report(&pins_write_report) {
         Ok(_) => {
             mut_data.pins_write_report = pins_write_report;
             Ok(())
@@ -122,10 +120,10 @@ pub fn disable_peripheral(
     peripheral: Peripheral,
 ) {
     match match peripheral {
-        Peripheral::I2C => send_disable_i2c(data, &mut mut_data.communication_data),
-        Peripheral::PWM => send_disable_pwm(data, &mut mut_data.communication_data),
-        Peripheral::SPI => send_disable_spi(data, &mut mut_data.communication_data),
-        Peripheral::ADC => send_disable_adc(data, &mut mut_data.communication_data),
+        Peripheral::I2C => send_disable_i2c(data, mut_data),
+        Peripheral::PWM => send_disable_pwm(data, mut_data),
+        Peripheral::SPI => send_disable_spi(data, mut_data),
+        Peripheral::ADC => send_disable_adc(data, mut_data),
     } {
         Ok(_) => {
             mut_data
@@ -140,48 +138,48 @@ pub fn disable_peripheral(
 
 fn send_disable_i2c(
     data: &IOWarriorData,
-    communication_data: &mut CommunicationData,
+    mut_data: &mut RefMut<IOWarriorMutData>,
 ) -> Result<(), HidError> {
-    let mut report = data.create_report(Pipe::I2CMode);
+    let mut report = data.create_report(PipeName::I2CMode);
 
     report.buffer[0] = ReportId::I2cSetup.get_value();
     report.buffer[1] = 0x00;
 
-    communication_service::write_report(communication_data, &report)
+    mut_data.write_report(&report)
 }
 
 fn send_disable_pwm(
     data: &IOWarriorData,
-    communication_data: &mut CommunicationData,
+    mut_data: &mut RefMut<IOWarriorMutData>,
 ) -> Result<(), HidError> {
-    let mut report = data.create_report(Pipe::SpecialMode);
+    let mut report = data.create_report(PipeName::SpecialMode);
 
     report.buffer[0] = ReportId::PwmSetup.get_value();
     report.buffer[1] = 0x00;
 
-    communication_service::write_report(communication_data, &report)
+    mut_data.write_report(&report)
 }
 
 fn send_disable_spi(
     data: &IOWarriorData,
-    communication_data: &mut CommunicationData,
+    mut_data: &mut RefMut<IOWarriorMutData>,
 ) -> Result<(), HidError> {
-    let mut report = data.create_report(Pipe::SpecialMode);
+    let mut report = data.create_report(PipeName::SpecialMode);
 
     report.buffer[0] = ReportId::SpiSetup.get_value();
     report.buffer[1] = 0x00;
 
-    communication_service::write_report(communication_data, &report)
+    mut_data.write_report(&report)
 }
 
 fn send_disable_adc(
     data: &IOWarriorData,
-    communication_data: &mut CommunicationData,
+    mut_data: &mut RefMut<IOWarriorMutData>,
 ) -> Result<(), HidError> {
-    let mut report = data.create_report(Pipe::ADCMode);
+    let mut report = data.create_report(PipeName::ADCMode);
 
     report.buffer[0] = ReportId::AdcSetup.get_value();
     report.buffer[1] = 0x00;
 
-    communication_service::write_report(communication_data, &report)
+    mut_data.write_report(&report)
 }

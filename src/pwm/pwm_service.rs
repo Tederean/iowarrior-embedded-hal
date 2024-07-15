@@ -1,11 +1,10 @@
-use crate::communication::communication_service;
+use crate::iowarrior::HidError;
 use crate::iowarrior::{
-    peripheral_service, IOWarriorData, IOWarriorMutData, Peripheral, PeripheralSetupError, Pipe,
-    ReportId,
+    peripheral_service, IOWarriorData, IOWarriorMutData, Peripheral, PeripheralSetupError,
+    PipeName, ReportId,
 };
 use crate::pwm::{IOW56PWMConfig, IOWarriorPWMType, PWMChannel, PWMConfig, PWMData, PWMError, PWM};
 use crate::{iowarrior::IOWarriorType, pin};
-use hidapi::HidError;
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 
@@ -63,14 +62,16 @@ fn get_pwm_type(data: &Rc<IOWarriorData>, pwm_config: PWMConfig) -> Option<IOWar
     if data.device_type == IOWarriorType::IOWarrior56
         || data.device_type == IOWarriorType::IOWarrior56Dongle
     {
-        if data.device_revision >= 0x2000
-            && data.device_revision < 0x2002
+        let device_revision = data.device_revision.unwrap_or(0);
+
+        if device_revision >= 0x2000
+            && device_revision < 0x2002
             && pwm_config.iow56_config == IOW56PWMConfig::One
         {
             return Some(IOWarriorPWMType::IOWarrior56);
         }
 
-        if data.device_revision >= 0x2002 {
+        if device_revision >= 0x2002 {
             return Some(IOWarriorPWMType::IOWarrior56);
         }
     }
@@ -177,7 +178,7 @@ fn send_enable_pwm(
     pwm_data: &PWMData,
 ) -> Result<(), HidError> {
     {
-        let mut report = data.create_report(Pipe::SpecialMode);
+        let mut report = data.create_report(PipeName::SpecialMode);
 
         report.buffer[0] = ReportId::PwmSetup.get_value();
         report.buffer[1] = match pwm_data.pwm_type {
@@ -190,11 +191,11 @@ fn send_enable_pwm(
             write_iow56_pwm_channel(&mut report.buffer[7..12], &pwm_data, PWMChannel::Second);
         }
 
-        communication_service::write_report(&mut mut_data.communication_data, &mut report)?;
+        mut_data.write_report(&mut report)?;
     }
 
     if pwm_data.pwm_type == IOWarriorPWMType::IOWarrior100 {
-        let mut report = data.create_report(Pipe::SpecialMode);
+        let mut report = data.create_report(PipeName::SpecialMode);
 
         report.buffer[0] = ReportId::PwmParameters.get_value();
         report.buffer[1] = match pwm_data.pwm_type {
@@ -210,7 +211,7 @@ fn send_enable_pwm(
         write_iow100_pwm_channel(&mut report.buffer[10..12], &pwm_data, PWMChannel::Third);
         write_iow100_pwm_channel(&mut report.buffer[12..14], &pwm_data, PWMChannel::Fourth);
 
-        communication_service::write_report(&mut mut_data.communication_data, &mut report)?;
+        mut_data.write_report(&mut report)?;
     }
 
     Ok(())

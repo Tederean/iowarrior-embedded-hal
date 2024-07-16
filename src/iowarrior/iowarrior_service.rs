@@ -1,7 +1,7 @@
 use crate::backend::PipeInfo;
 use crate::iowarrior::{
-    HidError, IOWarrior, IOWarriorData, IOWarriorInfo, IOWarriorMutData, IOWarriorType, Pipe,
-    PipeName, Report, ReportId,
+    HidError, IOWarrior, IOWarriorData, IOWarriorInfo, IOWarriorLock, IOWarriorMutData,
+    IOWarriorType, Pipe, PipeName, Report, ReportId,
 };
 use itertools::Itertools;
 use std::cell::RefCell;
@@ -104,7 +104,7 @@ pub(crate) fn open_iowarrior(
     device_serial: String,
     device_type: IOWarriorType,
 ) -> Result<IOWarrior, HidError> {
-    // TODO Check if already opened, create Drop function in IOWarriorMutData
+    let iowarrior_lock = Rc::new(IOWarriorLock::new(device_serial.clone())?);
 
     let mut pipe_impl_0 = pipe_info_0.open()?;
     let pipe_impl_1 = pipe_info_1.open()?;
@@ -124,10 +124,34 @@ pub(crate) fn open_iowarrior(
     let standard_report_size = get_standard_report_size(device_type);
     let special_report_size = get_special_report_size(device_type);
 
-    let pipe_0 = Pipe::new(pipe_impl_0, PipeName::IOPins, standard_report_size);
-    let mut pipe_1 = Pipe::new(pipe_impl_1, PipeName::SpecialMode, special_report_size);
-    let pipe_2 = pipe_impl_2.map(|x| Pipe::new(x, PipeName::I2CMode, special_report_size));
-    let mut pipe_3 = pipe_impl_3.map(|x| Pipe::new(x, PipeName::ADCMode, special_report_size));
+    let pipe_0 = Pipe::new(
+        pipe_impl_0,
+        PipeName::IOPins,
+        iowarrior_lock.clone(),
+        standard_report_size,
+    );
+    let mut pipe_1 = Pipe::new(
+        pipe_impl_1,
+        PipeName::SpecialMode,
+        iowarrior_lock.clone(),
+        special_report_size,
+    );
+    let pipe_2 = pipe_impl_2.map(|x| {
+        Pipe::new(
+            x,
+            PipeName::I2CMode,
+            iowarrior_lock.clone(),
+            special_report_size,
+        )
+    });
+    let mut pipe_3 = pipe_impl_3.map(|x| {
+        Pipe::new(
+            x,
+            PipeName::ADCMode,
+            iowarrior_lock.clone(),
+            special_report_size,
+        )
+    });
 
     let mut data = IOWarriorData {
         device_serial,
@@ -142,12 +166,7 @@ pub(crate) fn open_iowarrior(
     }
 
     if data.device_type == IOWarriorType::IOWarrior28 {
-        match &mut pipe_3 {
-            None => {}
-            Some(x) => {
-                data.device_type = get_iowarrior28_subtype(x)?;
-            }
-        }
+        data.device_type = get_iowarrior28_subtype(pipe_3.as_mut().unwrap())?;
     }
 
     let pins_report = get_pins_report(&data, &mut pipe_1)?;

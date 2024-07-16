@@ -1,20 +1,28 @@
 use crate::backend::PipeImpl;
-use crate::iowarrior::{HidError, PipeName, Report};
+use crate::iowarrior::{HidError, IOWarriorLock, PipeName, Report};
 use std::fmt;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Pipe {
     report_size: usize,
     pipe_impl: PipeImpl,
     pipe_name: PipeName,
+    _iowarrior_lock: Rc<IOWarriorLock>,
 }
 
 impl Pipe {
-    pub fn new(pipe_impl: PipeImpl, pipe_name: PipeName, report_size: usize) -> Pipe {
+    pub fn new(
+        pipe_impl: PipeImpl,
+        pipe_name: PipeName,
+        iowarrior_lock: Rc<IOWarriorLock>,
+        report_size: usize,
+    ) -> Pipe {
         Pipe {
             report_size,
             pipe_impl,
             pipe_name,
+            _iowarrior_lock: iowarrior_lock,
         }
     }
 

@@ -5,8 +5,11 @@ cfg_if::cfg_if! {
         pub(crate) use self::usbhid::*;
 
     } else if #[cfg(feature = "iowkit")] {
-        compile_error!("iowkit is not implemented yet.");
+
+        mod iowkit;
+        pub(crate) use self::iowkit::*;
+
     } else {
-        compile_error!("No backend selected. Enable one of the following features: usbhid, iowkit");
+        compile_error!("No backend (crate feature) selected.");
     }
 }

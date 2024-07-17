@@ -160,12 +160,12 @@ pub(crate) fn open_iowarrior(
         special_report_size,
     };
 
-    if data.device_type == IOWarriorType::IOWarrior56 {
-        data.device_type = get_iowarrior56_subtype(&mut pipe_1)?;
+    if data.device_type == IOWarriorType::IOWarrior56 && is_dongle(&mut pipe_1)? {
+        data.device_type = IOWarriorType::IOWarrior56Dongle;
     }
 
-    if data.device_type == IOWarriorType::IOWarrior28 {
-        data.device_type = get_iowarrior28_subtype(pipe_3.as_mut().unwrap())?;
+    if data.device_type == IOWarriorType::IOWarrior28 && is_dongle(pipe_3.as_mut().unwrap())? {
+        data.device_type = IOWarriorType::IOWarrior28Dongle;
     }
 
     let pins_report = get_pins_report(&data, &mut pipe_1)?;
@@ -214,42 +214,19 @@ fn get_special_report_size(device_type: IOWarriorType) -> usize {
     }
 }
 
-fn get_iowarrior56_subtype(pipe_1_special: &mut Pipe) -> Result<IOWarriorType, HidError> {
-    let mut report = pipe_1_special.create_report();
+fn is_dongle(pipe: &mut Pipe) -> Result<bool, HidError> {
+    let mut report = pipe.create_report();
 
     report.buffer[0] = ReportId::AdcSetup.get_value();
     report.buffer[1] = 0x00;
 
-    match pipe_1_special.write_report(&report) {
-        Ok(_) => Ok(IOWarriorType::IOWarrior56),
+    match pipe.write_report(&mut report) {
+        Ok(_) => Ok(false),
         Err(error) => {
             match error {
                 HidError::IncompleteSendError { sent, all: _ } => {
                     if sent == 0 {
-                        return Ok(IOWarriorType::IOWarrior56Dongle);
-                    }
-                }
-                _ => {}
-            }
-
-            Err(error)
-        }
-    }
-}
-
-fn get_iowarrior28_subtype(pipe_3_adc: &mut Pipe) -> Result<IOWarriorType, HidError> {
-    let mut report = pipe_3_adc.create_report();
-
-    report.buffer[0] = ReportId::AdcSetup.get_value();
-    report.buffer[1] = 0x00;
-
-    match pipe_3_adc.write_report(&mut report) {
-        Ok(_) => Ok(IOWarriorType::IOWarrior28),
-        Err(error) => {
-            match error {
-                HidError::IncompleteSendError { sent, all: _ } => {
-                    if sent == 0 {
-                        return Ok(IOWarriorType::IOWarrior28Dongle);
+                        return Ok(true);
                     }
                 }
                 _ => {}

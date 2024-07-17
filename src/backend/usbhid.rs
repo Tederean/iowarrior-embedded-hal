@@ -151,7 +151,7 @@ impl PipeImpl {
                     Ok(x) => x,
                     Err(_) => {
                         return Err(HidError::OpenHidDeviceWithDeviceInfoError {
-                            path: self.device_info.path().into_c_string(),
+                            path: CString::from(self.device_info.path()),
                             vendor_id: self.device_info.vendor_id(),
                             product_id: self.device_info.product_id(),
                             interface_number: self.device_info.interface_number() as u8,

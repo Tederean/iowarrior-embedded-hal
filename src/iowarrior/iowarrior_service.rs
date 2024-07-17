@@ -7,7 +7,9 @@ use itertools::Itertools;
 use std::sync::{Arc, Mutex};
 
 pub fn get_iowarriors() -> Result<Vec<IOWarriorInfo>, HidError> {
-    let pipe_map = PipeInfo::collect()?
+    let all_pipes = PipeInfo::collect()?;
+
+    let pipe_map = all_pipes
         .into_iter()
         .filter_map(|x| {
             let device_serial = match x.serial_number() {

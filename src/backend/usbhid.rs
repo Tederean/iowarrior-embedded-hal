@@ -5,7 +5,7 @@ use std::fmt;
 use std::fmt::Debug;
 use std::sync::Arc;
 
-const VENDOR_ID: u16 = 1984;
+const VENDOR_ID: u16 = 0x07c0;
 
 #[derive(Clone)]
 pub struct PipeInfo {
@@ -15,16 +15,20 @@ pub struct PipeInfo {
 
 impl PipeInfo {
     pub fn collect() -> Result<Vec<PipeInfo>, HidError> {
-        let api = Arc::new(HidApi::new().map_err(|x| map_hid_error(x))?);
+        let api = Arc::new({
+            let mut api = HidApi::new_without_enumerate().map_err(|x| map_hid_error(x))?;
+
+            api.add_devices(VENDOR_ID, 0)
+                .map_err(|x| map_hid_error(x))?;
+
+            api
+        });
 
         Ok(api
             .device_list()
-            .filter_map(|x| match x.vendor_id() == VENDOR_ID {
-                true => Some(PipeInfo {
-                    api: api.clone(),
-                    device_info: x.clone(),
-                }),
-                false => None,
+            .map(|x| PipeInfo {
+                api: api.clone(),
+                device_info: x.clone(),
             })
             .collect())
     }
@@ -130,7 +134,6 @@ impl PipeImpl {
                 use std::fs::OpenOptions;
                 use std::os::fd::AsRawFd;
                 use std::os::raw;
-                use std::str::Utf8Error;
 
                 #[repr(C)]
                 #[derive(Debug)]

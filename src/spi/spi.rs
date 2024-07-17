@@ -1,8 +1,8 @@
 use crate::iowarrior::Peripheral;
 use crate::iowarrior::{peripheral_service, IOWarriorData, IOWarriorMutData};
 use crate::spi::{spi_service, SPIConfig, SPIData, SPIError};
-use std::sync::{Arc, Mutex};
 use std::fmt;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 #[derive(Debug)]

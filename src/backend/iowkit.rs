@@ -49,14 +49,16 @@ fn get_iowkit_library(
             let library =
                 unsafe { Iowkit::new(path) }.map_err(|_| HidError::InitializationError)?;
 
-            let library_handle = NonNull::new(unsafe { library.IowKitOpenDevice() }).map(|x| IowkitHandle(x));
+            let library_handle =
+                NonNull::new(unsafe { library.IowKitOpenDevice() }).map(|x| IowkitHandle(x));
 
             let device_count = unsafe { library.IowKitGetNumDevs() };
 
             let device_handles = (0..device_count)
                 .into_iter()
                 .filter_map(|x| {
-                    NonNull::new(unsafe { library.IowKitGetDeviceHandle(x + 1) }).map(|y| IowkitHandle(y))
+                    NonNull::new(unsafe { library.IowKitGetDeviceHandle(x + 1) })
+                        .map(|y| IowkitHandle(y))
                 })
                 .collect();
 

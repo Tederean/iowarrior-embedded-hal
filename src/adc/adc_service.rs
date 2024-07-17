@@ -9,8 +9,8 @@ use crate::iowarrior::{
 };
 use crate::{iowarrior::IOWarriorType, pin};
 use embedded_hal::digital::PinState;
-use std::sync::{Arc, Mutex, MutexGuard};
 use std::ops::Not;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub fn new(
@@ -62,7 +62,7 @@ pub fn new(
     }
 }
 
-fn get_adc_type(data: &Arc<IOWarriorData>) -> Option<IOWarriorADCType> {
+fn get_adc_type(data: &IOWarriorData) -> Option<IOWarriorADCType> {
     match data.device_type {
         IOWarriorType::IOWarrior28 => Some(IOWarriorADCType::IOWarrior28),
         IOWarriorType::IOWarrior100 => Some(IOWarriorADCType::IOWarrior100),
@@ -225,7 +225,7 @@ fn get_adc_pins(adc_data: &ADCData) -> Vec<u8> {
 
 fn send_enable_adc(
     data: &IOWarriorData,
-    mut_data: &mut MutexGuard<IOWarriorMutData>,
+    mut_data: &mut IOWarriorMutData,
     adc_data: &ADCData,
 ) -> Result<(), HidError> {
     let mut report = data.create_report(PipeName::ADCMode);
@@ -253,8 +253,8 @@ fn send_enable_adc(
 }
 
 pub fn read_samples(
-    data: &Arc<IOWarriorData>,
-    mut_data: &mut MutexGuard<IOWarriorMutData>,
+    data: &IOWarriorData,
+    mut_data: &mut IOWarriorMutData,
     adc_data: &ADCData,
     buffer: &mut [Option<ADCSample>],
 ) -> Result<(), ADCReadError> {
@@ -268,8 +268,8 @@ pub fn read_samples(
 }
 
 pub fn pulse_in(
-    data: &Arc<IOWarriorData>,
-    mut_data: &mut MutexGuard<IOWarriorMutData>,
+    data: &IOWarriorData,
+    mut_data: &mut IOWarriorMutData,
     adc_data: &ADCData,
     channel: ADCChannel,
     pin_state: PinState,
@@ -364,8 +364,8 @@ fn get_pin_state(adc_sample: &ADCSample, adc_data: &ADCData) -> PinState {
 }
 
 fn read_samples_report(
-    data: &Arc<IOWarriorData>,
-    mut_data: &mut MutexGuard<IOWarriorMutData>,
+    data: &IOWarriorData,
+    mut_data: &mut IOWarriorMutData,
     adc_data: &ADCData,
     buffer: &mut [Option<ADCSample>],
     last_packet: &mut Option<u8>,

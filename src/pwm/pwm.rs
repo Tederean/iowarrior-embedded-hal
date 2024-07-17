@@ -1,8 +1,8 @@
 use crate::iowarrior::Peripheral;
 use crate::iowarrior::{peripheral_service, IOWarriorData, IOWarriorMutData};
 use crate::pwm::{pwm_service, PWMChannel, PWMConfig, PWMData, PWMError};
-use std::sync::{Arc, Mutex, RwLock};
 use std::fmt;
+use std::sync::{Arc, Mutex, RwLock};
 
 #[derive(Debug)]
 pub struct PWM {
@@ -67,7 +67,10 @@ impl embedded_hal_0::PwmPin for PWM {
 
     #[inline]
     fn get_duty(&self) -> Self::Duty {
-        self.pwm_data_rwlock.read().unwrap().get_duty_cycle(self.channel)
+        self.pwm_data_rwlock
+            .read()
+            .unwrap()
+            .get_duty_cycle(self.channel)
     }
 
     #[inline]
@@ -104,7 +107,10 @@ impl PWM {
 
     #[inline]
     pub fn get_duty_cycle(&self) -> u16 {
-        self.pwm_data_rwlock.read().unwrap().get_duty_cycle(self.channel)
+        self.pwm_data_rwlock
+            .read()
+            .unwrap()
+            .get_duty_cycle(self.channel)
     }
 
     #[inline]

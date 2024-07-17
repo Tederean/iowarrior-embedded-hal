@@ -3,8 +3,8 @@ use crate::adc::{adc_service, ADCChannel, ADCConfig, ADCData, ADCPulseInError, A
 use crate::iowarrior::Peripheral;
 use crate::iowarrior::{peripheral_service, IOWarriorData, IOWarriorMutData};
 use embedded_hal::digital::PinState;
-use std::sync::{Arc, Mutex};
 use std::fmt;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 #[derive(Debug)]

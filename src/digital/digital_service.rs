@@ -5,7 +5,7 @@ use crate::iowarrior::{
     peripheral_service, IOWarriorData, IOWarriorMutData, IOWarriorType, PipeName, UsedPin,
 };
 use embedded_hal::digital::PinState;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 
 pub fn new_input(
     data: &Arc<IOWarriorData>,
@@ -41,7 +41,7 @@ pub fn new_output(
 
 fn enable_gpio(
     data: &IOWarriorData,
-    mut_data: &mut MutexGuard<IOWarriorMutData>,
+    mut_data: &mut IOWarriorMutData,
     pin_state: PinState,
     pin: u8,
 ) -> Result<(), PinSetupError> {
@@ -80,8 +80,8 @@ fn enable_gpio(
 }
 
 pub fn is_pin_input_state(
-    data: &Arc<IOWarriorData>,
-    mut_data: &mut MutexGuard<IOWarriorMutData>,
+    data: &IOWarriorData,
+    mut_data: &mut IOWarriorMutData,
     pin: u8,
     expected_pin_state: PinState,
 ) -> Result<bool, PinError> {
@@ -106,7 +106,7 @@ pub fn is_pin_input_state(
 }
 
 pub fn set_pin_output_state(
-    mut_data: &mut MutexGuard<IOWarriorMutData>,
+    mut_data: &mut IOWarriorMutData,
     pin: u8,
     pin_state: PinState,
 ) -> Result<(), PinError> {
@@ -114,7 +114,7 @@ pub fn set_pin_output_state(
 }
 
 pub fn is_pin_output_state(
-    mut_data: &mut MutexGuard<IOWarriorMutData>,
+    mut_data: &mut IOWarriorMutData,
     pin: u8,
     expected_pin_state: PinState,
 ) -> Result<bool, PinError> {

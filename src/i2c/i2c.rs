@@ -1,7 +1,7 @@
 use crate::i2c::{i2c_service, I2CConfig, I2CError};
 use crate::iowarrior::{peripheral_service, IOWarriorData, IOWarriorMutData, Peripheral};
-use std::sync::{Arc, Mutex};
 use std::fmt;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
 pub struct I2C {

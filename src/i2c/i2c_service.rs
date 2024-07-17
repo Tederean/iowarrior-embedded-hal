@@ -8,7 +8,7 @@ use crate::iowarrior::{
 use crate::iowarrior::{IOWarriorData, Report, ReportId};
 use crate::pin;
 use std::iter;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 
 pub fn new(
     data: &Arc<IOWarriorData>,
@@ -52,7 +52,7 @@ fn get_i2c_pins(device_type: IOWarriorType) -> Vec<u8> {
 
 fn send_enable_i2c(
     data: &IOWarriorData,
-    mut_data: &mut MutexGuard<IOWarriorMutData>,
+    mut_data: &mut IOWarriorMutData,
     i2c_config: &I2CConfig,
 ) -> Result<(), HidError> {
     let mut report = data.create_report(PipeName::I2CMode);
@@ -79,8 +79,8 @@ fn send_enable_i2c(
 }
 
 pub fn write_data(
-    data: &Arc<IOWarriorData>,
-    mut_data: &mut MutexGuard<IOWarriorMutData>,
+    data: &IOWarriorData,
+    mut_data: &mut IOWarriorMutData,
     address: u8,
     buffer: &[u8],
 ) -> Result<(), I2CError> {
@@ -138,7 +138,7 @@ pub fn write_data(
 
 pub fn read_data(
     data: &IOWarriorData,
-    mut_data: &mut MutexGuard<IOWarriorMutData>,
+    mut_data: &mut IOWarriorMutData,
     address: u8,
     buffer: &mut [u8],
 ) -> Result<(), I2CError> {
@@ -181,7 +181,7 @@ pub fn read_data(
 
 fn read_report(
     data: &IOWarriorData,
-    mut_data: &mut MutexGuard<IOWarriorMutData>,
+    mut_data: &mut IOWarriorMutData,
     report_id: ReportId,
 ) -> Result<Report, I2CError> {
     let mut report = data.create_report(PipeName::I2CMode);

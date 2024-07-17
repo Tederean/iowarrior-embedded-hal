@@ -2,8 +2,8 @@ use crate::digital::digital_service;
 use crate::digital::PinError;
 use crate::iowarrior::{peripheral_service, IOWarriorData, IOWarriorMutData};
 use embedded_hal::digital::PinState;
-use std::sync::{Arc, Mutex};
 use std::fmt;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
 pub struct InputPin {

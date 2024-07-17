@@ -8,15 +8,24 @@ use std::sync::{Arc, Mutex, MutexGuard, Weak};
 
 static IOWKIT_LIBRARY: Mutex<Weak<LibraryContainer>> = Mutex::new(Weak::new());
 
+#[derive(Debug, Copy, Clone)]
+struct IowkitHandle(NonNull<c_void>);
+
+impl IowkitHandle {
+    fn as_ptr(&self) -> *mut c_void {
+        self.0.as_ptr()
+    }
+}
+
+unsafe impl Sync for IowkitHandle {}
+unsafe impl Send for IowkitHandle {}
+
 #[derive(Debug)]
 struct LibraryContainer {
     library: Iowkit,
-    library_handle: Option<NonNull<c_void>>,
-    device_handles: Vec<NonNull<c_void>>,
+    library_handle: Option<IowkitHandle>,
+    device_handles: Vec<IowkitHandle>,
 }
-
-unsafe impl Sync for LibraryContainer {}
-unsafe impl Send for LibraryContainer {}
 
 impl Drop for LibraryContainer {
     #[inline]
@@ -40,13 +49,15 @@ fn get_iowkit_library(
             let library =
                 unsafe { Iowkit::new(path) }.map_err(|_| HidError::InitializationError)?;
 
-            let library_handle = NonNull::new(unsafe { library.IowKitOpenDevice() });
+            let library_handle = NonNull::new(unsafe { library.IowKitOpenDevice() }).map(|x| IowkitHandle(x));
 
             let device_count = unsafe { library.IowKitGetNumDevs() };
 
             let device_handles = (0..device_count)
                 .into_iter()
-                .filter_map(|x| NonNull::new(unsafe { library.IowKitGetDeviceHandle(x + 1) }))
+                .filter_map(|x| {
+                    NonNull::new(unsafe { library.IowKitGetDeviceHandle(x + 1) }).map(|y| IowkitHandle(y))
+                })
                 .collect();
 
             let arc = Arc::new(LibraryContainer {
@@ -66,7 +77,7 @@ fn get_iowkit_library(
 #[derive(Debug, Clone)]
 pub struct PipeInfo {
     library_container: Arc<LibraryContainer>,
-    device_handle: NonNull<c_void>,
+    device_handle: IowkitHandle,
     interface: u8,
     product_id: u16,
     device_serial: Option<String>,
@@ -153,7 +164,7 @@ impl fmt::Display for PipeInfo {
 #[derive(Debug)]
 pub struct PipeImpl {
     library_container: Arc<LibraryContainer>,
-    device_handle: NonNull<c_void>,
+    device_handle: IowkitHandle,
     interface: u8,
 }
 

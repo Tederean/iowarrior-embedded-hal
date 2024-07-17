@@ -3,19 +3,19 @@ use hidapi::{DeviceInfo, HidApi, HidDevice};
 use std::ffi::CString;
 use std::fmt;
 use std::fmt::Debug;
-use std::rc::Rc;
+use std::sync::Arc;
 
 const VENDOR_ID: u16 = 1984;
 
 #[derive(Clone)]
 pub struct PipeInfo {
-    api: Rc<HidApi>,
+    api: Arc<HidApi>,
     device_info: DeviceInfo,
 }
 
 impl PipeInfo {
     pub fn collect() -> Result<Vec<PipeInfo>, HidError> {
-        let api = Rc::new(HidApi::new().map_err(|x| map_hid_error(x))?);
+        let api = Arc::new(HidApi::new().map_err(|x| map_hid_error(x))?);
 
         Ok(api
             .device_list()

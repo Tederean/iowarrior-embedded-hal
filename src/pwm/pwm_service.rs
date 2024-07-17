@@ -5,18 +5,17 @@ use crate::iowarrior::{
 };
 use crate::pwm::{IOW56PWMConfig, IOWarriorPWMType, PWMChannel, PWMConfig, PWMData, PWMError, PWM};
 use crate::{iowarrior::IOWarriorType, pin};
-use std::cell::{RefCell, RefMut};
-use std::rc::Rc;
+use std::sync::{Arc, Mutex, MutexGuard, RwLock};
 
 pub fn new(
-    data: &Rc<IOWarriorData>,
-    mut_data_refcell: &Rc<RefCell<IOWarriorMutData>>,
+    data: &Arc<IOWarriorData>,
+    mut_data_mutex: &Arc<Mutex<IOWarriorMutData>>,
     pwm_config: PWMConfig,
 ) -> Result<Vec<PWM>, PeripheralSetupError> {
     match get_pwm_type(&data, pwm_config) {
         None => Err(PeripheralSetupError::NotSupported),
         Some(pwm_type) => {
-            let mut mut_data = mut_data_refcell.borrow_mut();
+            let mut mut_data = mut_data_mutex.lock().unwrap();
 
             if pwm_type == IOWarriorPWMType::IOWarrior56
                 && pwm_config.iow56_config == IOW56PWMConfig::Two
@@ -40,13 +39,13 @@ pub fn new(
 
             peripheral_service::post_enable(&mut mut_data, &pwm_pins, Peripheral::PWM);
 
-            let pwm_data_refcell = Rc::new(RefCell::new(pwm_data));
+            let pwm_data_rwlock = Arc::new(RwLock::new(pwm_data));
 
             Ok((0..pwm_pins.len())
                 .map(|index| PWM {
                     data: data.clone(),
-                    mut_data_refcell: mut_data_refcell.clone(),
-                    pwm_data_refcell: pwm_data_refcell.clone(),
+                    mut_data_mutex: mut_data_mutex.clone(),
+                    pwm_data_rwlock: pwm_data_rwlock.clone(),
                     channel: PWMChannel::from_u8((index + 1) as u8),
                 })
                 .collect())
@@ -54,7 +53,7 @@ pub fn new(
     }
 }
 
-fn get_pwm_type(data: &Rc<IOWarriorData>, pwm_config: PWMConfig) -> Option<IOWarriorPWMType> {
+fn get_pwm_type(data: &Arc<IOWarriorData>, pwm_config: PWMConfig) -> Option<IOWarriorPWMType> {
     if data.device_type == IOWarriorType::IOWarrior100 {
         return Some(IOWarriorPWMType::IOWarrior100);
     }
@@ -174,7 +173,7 @@ fn calculate_iow100_data(pwm_data: &mut PWMData) {
 
 fn send_enable_pwm(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     pwm_data: &PWMData,
 ) -> Result<(), HidError> {
     {
@@ -240,7 +239,7 @@ fn write_u16(bytes: &mut [u8], value: u16) {
 #[inline]
 pub fn update_duty_cycle(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     pwm_data: &PWMData,
 ) -> Result<(), PWMError> {
     send_enable_pwm(data, mut_data, pwm_data).map_err(|x| PWMError::ErrorUSB(x))

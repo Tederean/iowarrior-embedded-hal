@@ -6,14 +6,13 @@ use crate::iowarrior::{IOWarriorType, PeripheralSetupError};
 use crate::pwm::{pwm_service, PWMConfig, PWM};
 use crate::spi::{spi_service, SPIConfig, SPI};
 use embedded_hal::digital::PinState;
-use std::cell::RefCell;
 use std::fmt;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
 pub struct IOWarrior {
-    pub(crate) data: Rc<IOWarriorData>,
-    pub(crate) mut_data_refcell: Rc<RefCell<IOWarriorMutData>>,
+    pub(crate) data: Arc<IOWarriorData>,
+    pub(crate) mut_data_mutex: Arc<Mutex<IOWarriorMutData>>,
 }
 
 impl fmt::Display for IOWarrior {
@@ -43,14 +42,14 @@ impl IOWarrior {
         &self,
         i2c_config: I2CConfig,
     ) -> Result<I2C, PeripheralSetupError> {
-        i2c_service::new(&self.data, &self.mut_data_refcell, i2c_config)
+        i2c_service::new(&self.data, &self.mut_data_mutex, i2c_config)
     }
 
     #[inline]
     pub fn setup_i2c(&self) -> Result<I2C, PeripheralSetupError> {
         let i2c_config = I2CConfig::default();
 
-        i2c_service::new(&self.data, &self.mut_data_refcell, i2c_config)
+        i2c_service::new(&self.data, &self.mut_data_mutex, i2c_config)
     }
 
     #[inline]
@@ -58,14 +57,14 @@ impl IOWarrior {
         &self,
         pwm_config: PWMConfig,
     ) -> Result<Vec<PWM>, PeripheralSetupError> {
-        pwm_service::new(&self.data, &self.mut_data_refcell, pwm_config)
+        pwm_service::new(&self.data, &self.mut_data_mutex, pwm_config)
     }
 
     #[inline]
     pub fn setup_pwm(&self) -> Result<Vec<PWM>, PeripheralSetupError> {
         let pwm_config = PWMConfig::default();
 
-        pwm_service::new(&self.data, &self.mut_data_refcell, pwm_config)
+        pwm_service::new(&self.data, &self.mut_data_mutex, pwm_config)
     }
 
     #[inline]
@@ -73,14 +72,14 @@ impl IOWarrior {
         &self,
         adc_config: ADCConfig,
     ) -> Result<ADC, PeripheralSetupError> {
-        adc_service::new(&self.data, &self.mut_data_refcell, adc_config)
+        adc_service::new(&self.data, &self.mut_data_mutex, adc_config)
     }
 
     #[inline]
     pub fn setup_adc(&self) -> Result<ADC, PeripheralSetupError> {
         let adc_config = ADCConfig::default();
 
-        adc_service::new(&self.data, &self.mut_data_refcell, adc_config)
+        adc_service::new(&self.data, &self.mut_data_mutex, adc_config)
     }
 
     #[inline]
@@ -88,28 +87,28 @@ impl IOWarrior {
         &self,
         spi_config: SPIConfig,
     ) -> Result<SPI, PeripheralSetupError> {
-        spi_service::new(&self.data, &self.mut_data_refcell, spi_config)
+        spi_service::new(&self.data, &self.mut_data_mutex, spi_config)
     }
 
     #[inline]
     pub fn setup_spi(&self) -> Result<SPI, PeripheralSetupError> {
         let spi_config = SPIConfig::default();
 
-        spi_service::new(&self.data, &self.mut_data_refcell, spi_config)
+        spi_service::new(&self.data, &self.mut_data_mutex, spi_config)
     }
 
     #[inline]
     pub fn setup_output_as_high(&self, pin: u8) -> Result<OutputPin, PinSetupError> {
-        digital_service::new_output(&self.data, &self.mut_data_refcell, PinState::High, pin)
+        digital_service::new_output(&self.data, &self.mut_data_mutex, PinState::High, pin)
     }
 
     #[inline]
     pub fn setup_output_as_low(&self, pin: u8) -> Result<OutputPin, PinSetupError> {
-        digital_service::new_output(&self.data, &self.mut_data_refcell, PinState::Low, pin)
+        digital_service::new_output(&self.data, &self.mut_data_mutex, PinState::Low, pin)
     }
 
     #[inline]
     pub fn setup_input(&self, pin: u8) -> Result<InputPin, PinSetupError> {
-        digital_service::new_input(&self.data, &self.mut_data_refcell, pin)
+        digital_service::new_input(&self.data, &self.mut_data_mutex, pin)
     }
 }

@@ -7,16 +7,15 @@ use crate::iowarrior::{
 };
 use crate::iowarrior::{IOWarriorData, Report, ReportId};
 use crate::pin;
-use std::cell::{RefCell, RefMut};
 use std::iter;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 pub fn new(
-    data: &Rc<IOWarriorData>,
-    mut_data_refcell: &Rc<RefCell<IOWarriorMutData>>,
+    data: &Arc<IOWarriorData>,
+    mut_data_mutex: &Arc<Mutex<IOWarriorMutData>>,
     i2c_config: I2CConfig,
 ) -> Result<I2C, PeripheralSetupError> {
-    let mut mut_data = mut_data_refcell.borrow_mut();
+    let mut mut_data = mut_data_mutex.lock().unwrap();
 
     let i2c_pins = get_i2c_pins(data.device_type);
 
@@ -29,7 +28,7 @@ pub fn new(
 
     Ok(I2C {
         data: data.clone(),
-        mut_data_refcell: mut_data_refcell.clone(),
+        mut_data_mutex: mut_data_mutex.clone(),
         i2c_config,
     })
 }
@@ -53,7 +52,7 @@ fn get_i2c_pins(device_type: IOWarriorType) -> Vec<u8> {
 
 fn send_enable_i2c(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     i2c_config: &I2CConfig,
 ) -> Result<(), HidError> {
     let mut report = data.create_report(PipeName::I2CMode);
@@ -80,8 +79,8 @@ fn send_enable_i2c(
 }
 
 pub fn write_data(
-    data: &Rc<IOWarriorData>,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    data: &Arc<IOWarriorData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     address: u8,
     buffer: &[u8],
 ) -> Result<(), I2CError> {
@@ -139,7 +138,7 @@ pub fn write_data(
 
 pub fn read_data(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     address: u8,
     buffer: &mut [u8],
 ) -> Result<(), I2CError> {
@@ -182,7 +181,7 @@ pub fn read_data(
 
 fn read_report(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     report_id: ReportId,
 ) -> Result<Report, I2CError> {
     let mut report = data.create_report(PipeName::I2CMode);

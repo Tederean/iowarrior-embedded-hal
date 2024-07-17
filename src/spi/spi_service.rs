@@ -7,20 +7,19 @@ use crate::iowarrior::{
 use crate::spi::spi_data::{IOWarriorSPIType, SPIData};
 use crate::spi::{SPIConfig, SPIError, SPIMode, SPI};
 use crate::{iowarrior::IOWarriorType, pin};
-use std::cell::{RefCell, RefMut};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::cmp::Ordering;
 use std::iter;
-use std::rc::Rc;
 
 pub fn new(
-    data: &Rc<IOWarriorData>,
-    mut_data_refcell: &Rc<RefCell<IOWarriorMutData>>,
+    data: &Arc<IOWarriorData>,
+    mut_data_mutex: &Arc<Mutex<IOWarriorMutData>>,
     spi_config: SPIConfig,
 ) -> Result<SPI, PeripheralSetupError> {
     match get_spi_type(&data) {
         None => Err(PeripheralSetupError::NotSupported),
         Some(spi_type) => {
-            let mut mut_data = mut_data_refcell.borrow_mut();
+            let mut mut_data = mut_data_mutex.lock().unwrap();
 
             if spi_type == IOWarriorSPIType::IOWarrior56
                 && peripheral_service::get_used_pins(&mut mut_data, Peripheral::PWM).len() > 1
@@ -45,14 +44,14 @@ pub fn new(
 
             Ok(SPI {
                 data: data.clone(),
-                mut_data_refcell: mut_data_refcell.clone(),
+                mut_data_mutex: mut_data_mutex.clone(),
                 spi_data,
             })
         }
     }
 }
 
-fn get_spi_type(data: &Rc<IOWarriorData>) -> Option<IOWarriorSPIType> {
+fn get_spi_type(data: &Arc<IOWarriorData>) -> Option<IOWarriorSPIType> {
     match data.device_type {
         IOWarriorType::IOWarrior24 | IOWarriorType::IOWarrior24PowerVampire => {
             Some(IOWarriorSPIType::IOWarrior24)
@@ -132,7 +131,7 @@ fn calculate_iow56_data(spi_data: &mut SPIData) {
 
 fn send_enable_spi(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     spi_data: &SPIData,
 ) -> Result<(), HidError> {
     let mut report = data.create_report(PipeName::SpecialMode);
@@ -198,8 +197,8 @@ fn send_enable_spi(
 }
 
 pub fn read_data(
-    data: &Rc<IOWarriorData>,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    data: &Arc<IOWarriorData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     spi_data: &SPIData,
     words: &mut [u8],
 ) -> Result<(), SPIError> {
@@ -230,8 +229,8 @@ pub fn read_data(
 }
 
 pub fn write_data(
-    data: &Rc<IOWarriorData>,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    data: &Arc<IOWarriorData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     spi_data: &SPIData,
     words: &[u8],
 ) -> Result<(), SPIError> {
@@ -266,8 +265,8 @@ pub fn write_data(
 }
 
 pub fn transfer_data_with_different_size(
-    data: &Rc<IOWarriorData>,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    data: &Arc<IOWarriorData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     spi_data: &SPIData,
     read: &mut [u8],
     write: &[u8],
@@ -307,8 +306,8 @@ pub fn transfer_data_with_different_size(
 }
 
 pub fn transfer_data_with_same_size(
-    data: &Rc<IOWarriorData>,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    data: &Arc<IOWarriorData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     spi_data: &SPIData,
     read: &mut [u8],
     write: &[u8],
@@ -339,8 +338,8 @@ pub fn transfer_data_with_same_size(
 }
 
 pub fn transfer_data_in_place(
-    data: &Rc<IOWarriorData>,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    data: &Arc<IOWarriorData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     spi_data: &SPIData,
     words: &mut [u8],
 ) -> Result<(), SPIError> {
@@ -368,7 +367,7 @@ pub fn transfer_data_in_place(
     Ok(())
 }
 
-fn get_chunk_size(data: &Rc<IOWarriorData>, spi_data: &SPIData) -> usize {
+fn get_chunk_size(data: &Arc<IOWarriorData>, spi_data: &SPIData) -> usize {
     data.special_report_size
         - match spi_data.spi_type {
             IOWarriorSPIType::IOWarrior24 => 2usize,
@@ -377,8 +376,8 @@ fn get_chunk_size(data: &Rc<IOWarriorData>, spi_data: &SPIData) -> usize {
 }
 
 fn write_report(
-    data: &Rc<IOWarriorData>,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    data: &Arc<IOWarriorData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     spi_data: &SPIData,
     write_chunk: &[u8],
     use_data_ready_pin: bool,
@@ -427,8 +426,8 @@ fn write_report(
 }
 
 fn read_report(
-    data: &Rc<IOWarriorData>,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    data: &Arc<IOWarriorData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     read_chunk: &mut [u8],
 ) -> Result<(), SPIError> {
     let mut report = data.create_report(PipeName::SpecialMode);

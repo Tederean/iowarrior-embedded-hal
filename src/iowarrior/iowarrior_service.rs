@@ -4,8 +4,7 @@ use crate::iowarrior::{
     IOWarriorType, Pipe, PipeName, Report, ReportId,
 };
 use itertools::Itertools;
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 pub fn get_iowarriors() -> Result<Vec<IOWarriorInfo>, HidError> {
     let pipe_map = PipeInfo::collect()?
@@ -104,7 +103,7 @@ pub(crate) fn open_iowarrior(
     device_serial: String,
     device_type: IOWarriorType,
 ) -> Result<IOWarrior, HidError> {
-    let iowarrior_lock = Rc::new(IOWarriorLock::new(device_serial.clone())?);
+    let iowarrior_lock = Arc::new(IOWarriorLock::new(device_serial.clone())?);
 
     let mut pipe_impl_0 = pipe_info_0.open()?;
     let pipe_impl_1 = pipe_info_1.open()?;
@@ -183,8 +182,8 @@ pub(crate) fn open_iowarrior(
     };
 
     Ok(IOWarrior {
-        data: Rc::new(data),
-        mut_data_refcell: Rc::new(RefCell::new(mut_data)),
+        data: Arc::new(data),
+        mut_data_mutex: Arc::new(Mutex::new(mut_data)),
     })
 }
 

@@ -1,13 +1,12 @@
 use crate::i2c::{i2c_service, I2CConfig, I2CError};
 use crate::iowarrior::{peripheral_service, IOWarriorData, IOWarriorMutData, Peripheral};
-use std::cell::RefCell;
+use std::sync::{Arc, Mutex};
 use std::fmt;
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct I2C {
-    pub(crate) data: Rc<IOWarriorData>,
-    pub(crate) mut_data_refcell: Rc<RefCell<IOWarriorMutData>>,
+    pub(crate) data: Arc<IOWarriorData>,
+    pub(crate) mut_data_mutex: Arc<Mutex<IOWarriorMutData>>,
     pub(crate) i2c_config: I2CConfig,
 }
 
@@ -22,7 +21,7 @@ impl Drop for I2C {
     fn drop(&mut self) {
         peripheral_service::disable_peripheral(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             Peripheral::I2C,
         );
     }
@@ -39,7 +38,7 @@ impl embedded_hal::i2c::I2c<embedded_hal::i2c::SevenBitAddress> for I2C {
         address: embedded_hal::i2c::SevenBitAddress,
         operations: &mut [embedded_hal::i2c::Operation],
     ) -> Result<(), Self::Error> {
-        let mut mut_data = self.mut_data_refcell.borrow_mut();
+        let mut mut_data = self.mut_data_mutex.lock().unwrap();
 
         for operation in operations {
             match operation {
@@ -64,7 +63,7 @@ impl embedded_hal_0::blocking::i2c::Write for I2C {
     fn write(&mut self, address: u8, bytes: &[u8]) -> Result<(), Self::Error> {
         i2c_service::write_data(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             address,
             bytes,
         )
@@ -79,7 +78,7 @@ impl embedded_hal_0::blocking::i2c::Read for I2C {
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
         i2c_service::read_data(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             address,
             buffer,
         )
@@ -97,7 +96,7 @@ impl embedded_hal_0::blocking::i2c::WriteRead for I2C {
         bytes: &[u8],
         buffer: &mut [u8],
     ) -> Result<(), Self::Error> {
-        let mut mut_data = self.mut_data_refcell.borrow_mut();
+        let mut mut_data = self.mut_data_mutex.lock().unwrap();
 
         i2c_service::write_data(&self.data, &mut mut_data, address, bytes)?;
         i2c_service::read_data(&self.data, &mut mut_data, address, buffer)

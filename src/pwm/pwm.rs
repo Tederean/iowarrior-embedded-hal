@@ -1,28 +1,27 @@
 use crate::iowarrior::Peripheral;
 use crate::iowarrior::{peripheral_service, IOWarriorData, IOWarriorMutData};
 use crate::pwm::{pwm_service, PWMChannel, PWMConfig, PWMData, PWMError};
-use std::cell::RefCell;
+use std::sync::{Arc, Mutex, RwLock};
 use std::fmt;
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct PWM {
-    pub(crate) data: Rc<IOWarriorData>,
-    pub(crate) mut_data_refcell: Rc<RefCell<IOWarriorMutData>>,
-    pub(crate) pwm_data_refcell: Rc<RefCell<PWMData>>,
+    pub(crate) data: Arc<IOWarriorData>,
+    pub(crate) mut_data_mutex: Arc<Mutex<IOWarriorMutData>>,
+    pub(crate) pwm_data_rwlock: Arc<RwLock<PWMData>>,
     pub(crate) channel: PWMChannel,
 }
 
 impl Drop for PWM {
     fn drop(&mut self) {
-        let mut pwm_data = self.pwm_data_refcell.borrow_mut();
+        let mut pwm_data = self.pwm_data_rwlock.write().unwrap();
 
         pwm_data.pins_counter -= 1;
 
         if pwm_data.pins_counter == 0 {
             peripheral_service::disable_peripheral(
                 &self.data,
-                &mut self.mut_data_refcell.borrow_mut(),
+                &mut self.mut_data_mutex.lock().unwrap(),
                 Peripheral::PWM,
             );
         }
@@ -42,13 +41,13 @@ impl embedded_hal::pwm::ErrorType for PWM {
 impl embedded_hal::pwm::SetDutyCycle for PWM {
     #[inline]
     fn max_duty_cycle(&self) -> u16 {
-        self.pwm_data_refcell.borrow().max_duty_cycle
+        self.pwm_data_rwlock.read().unwrap().max_duty_cycle
     }
 
     #[inline]
     fn set_duty_cycle(&mut self, duty: u16) -> Result<(), Self::Error> {
-        let mut mut_data = self.mut_data_refcell.borrow_mut();
-        let mut pwm_data = self.pwm_data_refcell.borrow_mut();
+        let mut mut_data = self.mut_data_mutex.lock().unwrap();
+        let mut pwm_data = self.pwm_data_rwlock.write().unwrap();
 
         pwm_data.set_duty_cycle(self.channel, duty);
 
@@ -68,18 +67,18 @@ impl embedded_hal_0::PwmPin for PWM {
 
     #[inline]
     fn get_duty(&self) -> Self::Duty {
-        self.pwm_data_refcell.borrow().get_duty_cycle(self.channel)
+        self.pwm_data_rwlock.read().unwrap().get_duty_cycle(self.channel)
     }
 
     #[inline]
     fn get_max_duty(&self) -> Self::Duty {
-        self.pwm_data_refcell.borrow().max_duty_cycle
+        self.pwm_data_rwlock.read().unwrap().max_duty_cycle
     }
 
     #[inline]
     fn set_duty(&mut self, duty: Self::Duty) {
-        let mut mut_data = self.mut_data_refcell.borrow_mut();
-        let mut pwm_data = self.pwm_data_refcell.borrow_mut();
+        let mut mut_data = self.mut_data_mutex.lock().unwrap();
+        let mut pwm_data = self.pwm_data_rwlock.write().unwrap();
 
         pwm_data.set_duty_cycle(self.channel, duty);
 
@@ -90,12 +89,12 @@ impl embedded_hal_0::PwmPin for PWM {
 impl PWM {
     #[inline]
     pub fn get_config(&self) -> PWMConfig {
-        self.pwm_data_refcell.borrow().pwm_config.clone()
+        self.pwm_data_rwlock.read().unwrap().pwm_config.clone()
     }
 
     #[inline]
     pub fn get_frequency_hz(&self) -> u32 {
-        self.pwm_data_refcell.borrow().calculated_frequency_hz
+        self.pwm_data_rwlock.read().unwrap().calculated_frequency_hz
     }
 
     #[inline]
@@ -105,11 +104,11 @@ impl PWM {
 
     #[inline]
     pub fn get_duty_cycle(&self) -> u16 {
-        self.pwm_data_refcell.borrow().get_duty_cycle(self.channel)
+        self.pwm_data_rwlock.read().unwrap().get_duty_cycle(self.channel)
     }
 
     #[inline]
     pub fn get_max_duty_cycle(&self) -> u16 {
-        self.pwm_data_refcell.borrow().max_duty_cycle
+        self.pwm_data_rwlock.read().unwrap().max_duty_cycle
     }
 }

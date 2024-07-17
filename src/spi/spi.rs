@@ -1,15 +1,14 @@
 use crate::iowarrior::Peripheral;
 use crate::iowarrior::{peripheral_service, IOWarriorData, IOWarriorMutData};
 use crate::spi::{spi_service, SPIConfig, SPIData, SPIError};
-use std::cell::RefCell;
+use std::sync::{Arc, Mutex};
 use std::fmt;
-use std::rc::Rc;
 use std::time::Duration;
 
 #[derive(Debug)]
 pub struct SPI {
-    pub(crate) data: Rc<IOWarriorData>,
-    pub(crate) mut_data_refcell: Rc<RefCell<IOWarriorMutData>>,
+    pub(crate) data: Arc<IOWarriorData>,
+    pub(crate) mut_data_mutex: Arc<Mutex<IOWarriorMutData>>,
     pub(crate) spi_data: SPIData,
 }
 
@@ -24,7 +23,7 @@ impl Drop for SPI {
     fn drop(&mut self) {
         peripheral_service::disable_peripheral(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             Peripheral::SPI,
         );
     }
@@ -39,7 +38,7 @@ impl embedded_hal::spi::SpiBus<u8> for SPI {
     fn read(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
         spi_service::read_data(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             &self.spi_data,
             words,
         )
@@ -49,7 +48,7 @@ impl embedded_hal::spi::SpiBus<u8> for SPI {
     fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
         spi_service::write_data(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             &self.spi_data,
             words,
         )
@@ -59,7 +58,7 @@ impl embedded_hal::spi::SpiBus<u8> for SPI {
     fn transfer(&mut self, read: &mut [u8], write: &[u8]) -> Result<(), Self::Error> {
         spi_service::transfer_data_with_different_size(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             &self.spi_data,
             read,
             write,
@@ -70,7 +69,7 @@ impl embedded_hal::spi::SpiBus<u8> for SPI {
     fn transfer_in_place(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
         spi_service::transfer_data_in_place(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             &self.spi_data,
             words,
         )
@@ -92,7 +91,7 @@ impl embedded_hal_0::blocking::spi::Transfer<u8> for SPI {
 
         spi_service::transfer_data_with_same_size(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             &self.spi_data,
             buffer,
             write_buffer.as_slice(),
@@ -110,7 +109,7 @@ impl embedded_hal_0::blocking::spi::Write<u8> for SPI {
     fn write(&mut self, buffer: &[u8]) -> Result<(), Self::Error> {
         spi_service::write_data(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             &self.spi_data,
             buffer,
         )
@@ -130,7 +129,7 @@ impl embedded_hal_0::blocking::spi::WriteIter<u8> for SPI {
 
         spi_service::write_data(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             &self.spi_data,
             write.as_slice(),
         )
@@ -146,7 +145,7 @@ impl embedded_hal_0::blocking::spi::Transactional<u8> for SPI {
         &mut self,
         operations: &mut [embedded_hal_0::blocking::spi::Operation<'a, u8>],
     ) -> Result<(), Self::Error> {
-        let mut mut_data = self.mut_data_refcell.borrow_mut();
+        let mut mut_data = self.mut_data_mutex.lock().unwrap();
 
         for operation in operations {
             match operation {
@@ -173,7 +172,7 @@ impl embedded_hal::spi::SpiDevice for SPI {
         &mut self,
         operations: &mut [embedded_hal::spi::Operation<'_, u8>],
     ) -> Result<(), Self::Error> {
-        let mut mut_data = self.mut_data_refcell.borrow_mut();
+        let mut mut_data = self.mut_data_mutex.lock().unwrap();
 
         for operation in operations {
             match operation {
@@ -213,7 +212,7 @@ impl embedded_hal::spi::SpiDevice for SPI {
     fn read(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
         spi_service::read_data(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             &self.spi_data,
             buf,
         )
@@ -223,7 +222,7 @@ impl embedded_hal::spi::SpiDevice for SPI {
     fn write(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
         spi_service::write_data(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             &self.spi_data,
             buf,
         )
@@ -233,7 +232,7 @@ impl embedded_hal::spi::SpiDevice for SPI {
     fn transfer(&mut self, read: &mut [u8], write: &[u8]) -> Result<(), Self::Error> {
         spi_service::transfer_data_with_different_size(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             &self.spi_data,
             read,
             write,
@@ -244,7 +243,7 @@ impl embedded_hal::spi::SpiDevice for SPI {
     fn transfer_in_place(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
         spi_service::transfer_data_in_place(
             &self.data,
-            &mut self.mut_data_refcell.borrow_mut(),
+            &mut self.mut_data_mutex.lock().unwrap(),
             &self.spi_data,
             buf,
         )

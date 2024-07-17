@@ -5,10 +5,10 @@ use crate::iowarrior::{
     ReportId, UsedPin,
 };
 use embedded_hal::digital::PinState;
-use std::cell::RefMut;
+use std::sync::MutexGuard;
 
 pub fn get_used_pins(
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     peripheral: Peripheral,
 ) -> Vec<UsedPin> {
     mut_data
@@ -21,7 +21,7 @@ pub fn get_used_pins(
 
 pub fn precheck_peripheral(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     peripheral: Peripheral,
     required_pins: &Vec<u8>,
 ) -> Result<(), PeripheralSetupError> {
@@ -52,7 +52,7 @@ pub fn precheck_peripheral(
 }
 
 pub fn post_enable(
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     peripheral_pins: &Vec<u8>,
     peripheral: Peripheral,
 ) {
@@ -66,7 +66,7 @@ pub fn post_enable(
 
 pub fn cleanup_dangling_modules(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
 ) -> Result<(), HidError> {
     if !mut_data.dangling_peripherals.is_empty() {
         for x in mut_data.dangling_peripherals.to_vec() {
@@ -85,7 +85,7 @@ pub fn cleanup_dangling_modules(
 }
 
 pub fn set_pin_output(
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     pin_state: PinState,
     pin: u8,
 ) -> Result<(), HidError> {
@@ -105,7 +105,7 @@ pub fn set_pin_output(
     }
 }
 
-pub fn disable_gpio(mut_data: &mut RefMut<IOWarriorMutData>, pin: u8) {
+pub fn disable_gpio(mut_data: &mut MutexGuard<IOWarriorMutData>, pin: u8) {
     match set_pin_output(mut_data, PinState::High, pin) {
         Ok(_) => {}
         Err(_) => { /* Ignore error. Every following pin and peripheral can handle this. */ }
@@ -116,7 +116,7 @@ pub fn disable_gpio(mut_data: &mut RefMut<IOWarriorMutData>, pin: u8) {
 
 pub fn disable_peripheral(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     peripheral: Peripheral,
 ) {
     match match peripheral {
@@ -138,7 +138,7 @@ pub fn disable_peripheral(
 
 fn send_disable_i2c(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
 ) -> Result<(), HidError> {
     let mut report = data.create_report(PipeName::I2CMode);
 
@@ -150,7 +150,7 @@ fn send_disable_i2c(
 
 fn send_disable_pwm(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
 ) -> Result<(), HidError> {
     let mut report = data.create_report(PipeName::SpecialMode);
 
@@ -162,7 +162,7 @@ fn send_disable_pwm(
 
 fn send_disable_spi(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
 ) -> Result<(), HidError> {
     let mut report = data.create_report(PipeName::SpecialMode);
 
@@ -174,7 +174,7 @@ fn send_disable_spi(
 
 fn send_disable_adc(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
 ) -> Result<(), HidError> {
     let mut report = data.create_report(PipeName::ADCMode);
 

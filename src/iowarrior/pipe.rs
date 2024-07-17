@@ -1,7 +1,7 @@
 use crate::backend::PipeImpl;
 use crate::iowarrior::{HidError, IOWarriorLock, PipeName, Report};
 use std::fmt;
-use std::rc::Rc;
+use std::sync::Arc;
 
 // Keep _iowarrior_lock always after pipe_impl in this struct.
 // Variables are dropped in their order of declaration.
@@ -11,14 +11,14 @@ pub struct Pipe {
     report_size: usize,
     pipe_name: PipeName,
     pipe_impl: PipeImpl,
-    _iowarrior_lock: Rc<IOWarriorLock>,
+    _iowarrior_lock: Arc<IOWarriorLock>,
 }
 
 impl Pipe {
     pub fn new(
         pipe_impl: PipeImpl,
         pipe_name: PipeName,
-        iowarrior_lock: Rc<IOWarriorLock>,
+        iowarrior_lock: Arc<IOWarriorLock>,
         report_size: usize,
     ) -> Pipe {
         Pipe {

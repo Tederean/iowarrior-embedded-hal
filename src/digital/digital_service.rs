@@ -5,44 +5,43 @@ use crate::iowarrior::{
     peripheral_service, IOWarriorData, IOWarriorMutData, IOWarriorType, PipeName, UsedPin,
 };
 use embedded_hal::digital::PinState;
-use std::cell::{RefCell, RefMut};
-use std::rc::Rc;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 pub fn new_input(
-    data: &Rc<IOWarriorData>,
-    mut_data_refcell: &Rc<RefCell<IOWarriorMutData>>,
+    data: &Arc<IOWarriorData>,
+    mut_data_mutex: &Arc<Mutex<IOWarriorMutData>>,
     pin: u8,
 ) -> Result<InputPin, PinSetupError> {
-    let mut mut_data = mut_data_refcell.borrow_mut();
+    let mut mut_data = mut_data_mutex.lock().unwrap();
 
     enable_gpio(&data, &mut mut_data, PinState::High, pin)?;
 
     Ok(InputPin {
         pin,
         data: data.clone(),
-        mut_data_refcell: mut_data_refcell.clone(),
+        mut_data_mutex: mut_data_mutex.clone(),
     })
 }
 
 pub fn new_output(
-    data: &Rc<IOWarriorData>,
-    mut_data_refcell: &Rc<RefCell<IOWarriorMutData>>,
+    data: &Arc<IOWarriorData>,
+    mut_data_mutex: &Arc<Mutex<IOWarriorMutData>>,
     pin_state: PinState,
     pin: u8,
 ) -> Result<OutputPin, PinSetupError> {
-    let mut mut_data = mut_data_refcell.borrow_mut();
+    let mut mut_data = mut_data_mutex.lock().unwrap();
 
     enable_gpio(&data, &mut mut_data, pin_state, pin)?;
 
     Ok(OutputPin {
         pin,
-        mut_data_refcell: mut_data_refcell.clone(),
+        mut_data_mutex: mut_data_mutex.clone(),
     })
 }
 
 fn enable_gpio(
     data: &IOWarriorData,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     pin_state: PinState,
     pin: u8,
 ) -> Result<(), PinSetupError> {
@@ -81,8 +80,8 @@ fn enable_gpio(
 }
 
 pub fn is_pin_input_state(
-    data: &Rc<IOWarriorData>,
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    data: &Arc<IOWarriorData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     pin: u8,
     expected_pin_state: PinState,
 ) -> Result<bool, PinError> {
@@ -107,7 +106,7 @@ pub fn is_pin_input_state(
 }
 
 pub fn set_pin_output_state(
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     pin: u8,
     pin_state: PinState,
 ) -> Result<(), PinError> {
@@ -115,7 +114,7 @@ pub fn set_pin_output_state(
 }
 
 pub fn is_pin_output_state(
-    mut_data: &mut RefMut<IOWarriorMutData>,
+    mut_data: &mut MutexGuard<IOWarriorMutData>,
     pin: u8,
     expected_pin_state: PinState,
 ) -> Result<bool, PinError> {

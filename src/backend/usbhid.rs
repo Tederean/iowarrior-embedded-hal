@@ -93,97 +93,104 @@ impl PipeImpl {
         self.hid_device.read(report).map_err(|x| map_hid_error(x))
     }
 
-    #[cfg(target_os = "windows")]
-    pub fn revision(&mut self) -> Result<Option<u16>, HidError> {
-        use std::fs::File;
-        use std::os::windows::io::AsRawHandle;
-        use windows::Win32::Devices::HumanInterfaceDevice::{HidD_GetAttributes, HIDD_ATTRIBUTES};
-        use windows::Win32::Foundation::{BOOLEAN, HWND};
+    cfg_if::cfg_if! {
+        if #[cfg(target_os = "windows")] {
 
-        let path = match self.device_info.path().to_str() {
-            Ok(x) => x,
-            Err(_) => return Err(HidError::InitializationError),
-        };
+            pub fn revision(&mut self) -> Result<Option<u16>, HidError> {
+                use std::fs::File;
+                use std::os::windows::io::AsRawHandle;
+                use windows::Win32::Devices::HumanInterfaceDevice::{HidD_GetAttributes, HIDD_ATTRIBUTES};
+                use windows::Win32::Foundation::{BOOLEAN, HWND};
 
-        let file = File::open(path).map_err(|x| HidError::IoError { error: x })?;
+                let path = match self.device_info.path().to_str() {
+                    Ok(x) => x,
+                    Err(_) => return Err(HidError::InitializationError),
+                };
 
-        let hwnd = HWND(file.as_raw_handle());
+                let file = File::open(path).map_err(|x| HidError::IoError { error: x })?;
 
-        let mut attributes = HIDD_ATTRIBUTES {
-            Size: std::mem::size_of::<HIDD_ATTRIBUTES>() as u32,
-            VendorID: 0,
-            ProductID: 0,
-            VersionNumber: 0,
-        };
+                let hwnd = HWND(file.as_raw_handle());
 
-        match unsafe { HidD_GetAttributes(hwnd, &mut attributes) != BOOLEAN(0) } {
-            true => Ok(Some(attributes.VersionNumber)),
-            false => Err(HidError::InitializationError),
-        }
-    }
+                let mut attributes = HIDD_ATTRIBUTES {
+                    Size: std::mem::size_of::<HIDD_ATTRIBUTES>() as u32,
+                    VendorID: 0,
+                    ProductID: 0,
+                    VersionNumber: 0,
+                };
 
-    #[cfg(target_os = "linux")]
-    pub fn revision(&mut self) -> Result<Option<u16>, HidError> {
-        use std::fs::OpenOptions;
-        use std::os::fd::AsRawFd;
-        use std::os::raw;
-        use std::str::Utf8Error;
-
-        #[repr(C)]
-        #[derive(Debug)]
-        struct IoctlInfo {
-            vendor: raw::c_int,
-            product: raw::c_int,
-            serial: [raw::c_char; 9],
-            revision: raw::c_int,
-            speed: raw::c_int,
-            power: raw::c_int,
-            interface: raw::c_int,
-            packet_size: raw::c_uint,
-        }
-
-        nix::ioctl_read!(ioctl_info_iowarrior, 0xC0, 3, IoctlInfo);
-
-        let path = match self.device_info.path().to_str() {
-            Ok(x) => x,
-            Err(_) => {
-                return Err(HidError::OpenHidDeviceWithDeviceInfoError {
-                    path: self.device_info.path().into_c_string(),
-                    vendor_id: self.device_info.vendor_id(),
-                    product_id: self.device_info.product_id(),
-                    interface_number: self.device_info.interface_number() as u8,
-                })
+                match unsafe { HidD_GetAttributes(hwnd, &mut attributes) != BOOLEAN(0) } {
+                    true => Ok(Some(attributes.VersionNumber)),
+                    false => Err(HidError::InitializationError),
+                }
             }
-        };
 
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(path)
-            .map_err(|x| HidError::IoError { error: x })?;
+        } else if #[cfg(target_os = "linux")] {
 
-        let raw_file_descriptor = file.as_raw_fd();
+            pub fn revision(&mut self) -> Result<Option<u16>, HidError> {
+                use std::fs::OpenOptions;
+                use std::os::fd::AsRawFd;
+                use std::os::raw;
+                use std::str::Utf8Error;
 
-        let mut ioctl_info = IoctlInfo {
-            vendor: 0,
-            product: 0,
-            serial: [0; 9],
-            revision: 0,
-            speed: 0,
-            power: 0,
-            interface: 0,
-            packet_size: 0,
-        };
+                #[repr(C)]
+                #[derive(Debug)]
+                struct IoctlInfo {
+                    vendor: raw::c_int,
+                    product: raw::c_int,
+                    serial: [raw::c_char; 9],
+                    revision: raw::c_int,
+                    speed: raw::c_int,
+                    power: raw::c_int,
+                    interface: raw::c_int,
+                    packet_size: raw::c_uint,
+                }
 
-        match unsafe { ioctl_info_iowarrior(raw_file_descriptor, &mut ioctl_info) } {
-            Ok(_) => Ok(Some(ioctl_info.revision as u16)),
-            Err(_) => return Err(HidError::InitializationError),
+                nix::ioctl_read!(ioctl_info_iowarrior, 0xC0, 3, IoctlInfo);
+
+                let path = match self.device_info.path().to_str() {
+                    Ok(x) => x,
+                    Err(_) => {
+                        return Err(HidError::OpenHidDeviceWithDeviceInfoError {
+                            path: self.device_info.path().into_c_string(),
+                            vendor_id: self.device_info.vendor_id(),
+                            product_id: self.device_info.product_id(),
+                            interface_number: self.device_info.interface_number() as u8,
+                        })
+                    }
+                };
+
+                let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(path)
+                    .map_err(|x| HidError::IoError { error: x })?;
+
+                let raw_file_descriptor = file.as_raw_fd();
+
+                let mut ioctl_info = IoctlInfo {
+                    vendor: 0,
+                    product: 0,
+                    serial: [0; 9],
+                    revision: 0,
+                    speed: 0,
+                    power: 0,
+                    interface: 0,
+                    packet_size: 0,
+                };
+
+                match unsafe { ioctl_info_iowarrior(raw_file_descriptor, &mut ioctl_info) } {
+                    Ok(_) => Ok(Some(ioctl_info.revision as u16)),
+                    Err(_) => return Err(HidError::InitializationError),
+                }
+            }
+
+        } else {
+
+            pub fn revision(&mut self) -> Result<Option<u16>, HidError> {
+                Ok(None)
+            }
+
         }
-    }
-
-    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
-    pub fn revision(&mut self) -> Result<Option<u16>, HidError> {
-        Ok(None)
     }
 }
 

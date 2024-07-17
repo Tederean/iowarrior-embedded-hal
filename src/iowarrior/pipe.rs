@@ -3,11 +3,14 @@ use crate::iowarrior::{HidError, IOWarriorLock, PipeName, Report};
 use std::fmt;
 use std::rc::Rc;
 
+// Keep _iowarrior_lock always after pipe_impl in this struct.
+// Variables are dropped in their order of declaration.
+// pipe_impl must have always been dropped before _iowarrior_lock.
 #[derive(Debug)]
 pub struct Pipe {
     report_size: usize,
-    pipe_impl: PipeImpl,
     pipe_name: PipeName,
+    pipe_impl: PipeImpl,
     _iowarrior_lock: Rc<IOWarriorLock>,
 }
 

@@ -34,10 +34,10 @@ impl IOWarriorType {
             IOWarriorType::IOWarrior24
             | IOWarriorType::IOWarrior40
             | IOWarriorType::IOWarrior24PowerVampire
-            | IOWarriorType::IOWarrior28L => 2,
-            IOWarriorType::IOWarrior56
-            | IOWarriorType::IOWarrior56Dongle
-            | IOWarriorType::IOWarrior28
+            | IOWarriorType::IOWarrior28L
+            | IOWarriorType::IOWarrior56
+            | IOWarriorType::IOWarrior56Dongle => 2,
+            IOWarriorType::IOWarrior28
             | IOWarriorType::IOWarrior28Dongle
             | IOWarriorType::IOWarrior100 => 4,
         }

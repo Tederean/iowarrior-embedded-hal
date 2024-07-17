@@ -10,7 +10,7 @@ static IOWKIT_LIBRARY: Mutex<Weak<LibraryContainer>> = Mutex::new(Weak::new());
 
 #[derive(Debug)]
 struct LibraryContainer {
-    library: Arc<Iowkit>,
+    library: Iowkit,
     library_handle: Option<NonNull<c_void>>,
     device_handles: Vec<NonNull<c_void>>,
 }
@@ -38,7 +38,7 @@ fn get_iowkit_library(
             let path = format!("{}{}{}", DLL_PREFIX, "iowkit", DLL_SUFFIX);
 
             let library =
-                Arc::new(unsafe { Iowkit::new(path) }.map_err(|_| HidError::InitializationError)?);
+                unsafe { Iowkit::new(path) }.map_err(|_| HidError::InitializationError)?;
 
             let library_handle = NonNull::new(unsafe { library.IowKitOpenDevice() });
 

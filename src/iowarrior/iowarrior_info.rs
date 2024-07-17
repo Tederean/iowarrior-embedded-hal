@@ -34,11 +34,11 @@ impl IOWarriorInfo {
         }
     }
 
-    pub fn possible_device_types(&self) -> &[IOWarriorType] {
+    pub fn get_possible_device_types(&self) -> &[IOWarriorType] {
         self.possible_device_types.as_slice()
     }
 
-    pub fn serial_number(&self) -> &str {
+    pub fn get_serial_number(&self) -> &str {
         &self.device_serial
     }
 

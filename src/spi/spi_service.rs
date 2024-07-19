@@ -53,9 +53,9 @@ pub fn new(
 
 fn get_spi_type(data: &IOWarriorData) -> Option<IOWarriorSPIType> {
     match data.device_type {
-        IOWarriorType::IOWarrior24 | IOWarriorType::IOWarrior24PowerVampire => {
-            Some(IOWarriorSPIType::IOWarrior24)
-        }
+        IOWarriorType::IOWarrior24
+        | IOWarriorType::IOWarrior24Dongle
+        | IOWarriorType::IOWarrior24PowerVampire => Some(IOWarriorSPIType::IOWarrior24),
         IOWarriorType::IOWarrior56 | IOWarriorType::IOWarrior56Dongle => {
             Some(IOWarriorSPIType::IOWarrior56)
         }

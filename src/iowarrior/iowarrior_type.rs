@@ -4,6 +4,7 @@ use std::fmt;
 pub enum IOWarriorType {
     IOWarrior40,
     IOWarrior24,
+    IOWarrior24Dongle,
     IOWarrior24PowerVampire,
     IOWarrior56,
     IOWarrior56Dongle,
@@ -32,6 +33,7 @@ impl IOWarriorType {
     pub fn pipe_count(&self) -> u8 {
         match self {
             IOWarriorType::IOWarrior24
+            | IOWarriorType::IOWarrior24Dongle
             | IOWarriorType::IOWarrior40
             | IOWarriorType::IOWarrior24PowerVampire
             | IOWarriorType::IOWarrior28L

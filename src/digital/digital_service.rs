@@ -135,7 +135,9 @@ fn get_is_valid_gpio(device_type: IOWarriorType, pin: u8) -> bool {
         IOWarriorType::IOWarrior24 => pin < 16,
         IOWarriorType::IOWarrior24PowerVampire => pin < 12,
         IOWarriorType::IOWarrior28 => pin < 18 || pin == 31,
-        IOWarriorType::IOWarrior28Dongle | IOWarriorType::IOWarrior56Dongle => false,
+        IOWarriorType::IOWarrior24Dongle
+        | IOWarriorType::IOWarrior28Dongle
+        | IOWarriorType::IOWarrior56Dongle => false,
         IOWarriorType::IOWarrior28L => pin < 18,
         IOWarriorType::IOWarrior56 => pin < 49 || pin == 55,
         IOWarriorType::IOWarrior100 => {

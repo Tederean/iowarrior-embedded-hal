@@ -72,10 +72,12 @@ pub fn get_iowarriors() -> Result<Vec<IOWarriorInfo>, HidError> {
 
             let possible_device_types = match device_type {
                 IOWarriorType::IOWarrior40
-                | IOWarriorType::IOWarrior24
                 | IOWarriorType::IOWarrior24PowerVampire
                 | IOWarriorType::IOWarrior28L
                 | IOWarriorType::IOWarrior100 => vec![device_type],
+                IOWarriorType::IOWarrior24 | IOWarriorType::IOWarrior24Dongle => {
+                    vec![IOWarriorType::IOWarrior24, IOWarriorType::IOWarrior24Dongle]
+                }
                 IOWarriorType::IOWarrior28 | IOWarriorType::IOWarrior28Dongle => {
                     vec![IOWarriorType::IOWarrior28, IOWarriorType::IOWarrior28Dongle]
                 }
@@ -162,11 +164,15 @@ pub(crate) fn open_iowarrior(
         special_report_size,
     };
 
-    if data.device_type == IOWarriorType::IOWarrior56 && is_dongle(&mut pipe_1)? {
+    if data.device_type == IOWarriorType::IOWarrior24 && is_dongle(&mut pipe_1, ReportId::IrSetup)? {
+        data.device_type = IOWarriorType::IOWarrior24Dongle;
+    }
+
+    else if data.device_type == IOWarriorType::IOWarrior56 && is_dongle(&mut pipe_1, ReportId::AdcSetup)? {
         data.device_type = IOWarriorType::IOWarrior56Dongle;
     }
 
-    if data.device_type == IOWarriorType::IOWarrior28 && is_dongle(pipe_3.as_mut().unwrap())? {
+    else if data.device_type == IOWarriorType::IOWarrior28 && is_dongle(pipe_3.as_mut().unwrap(), ReportId::AdcSetup)? {
         data.device_type = IOWarriorType::IOWarrior28Dongle;
     }
 
@@ -189,9 +195,12 @@ pub(crate) fn open_iowarrior(
     })
 }
 
+#[inline]
 fn get_standard_report_size(device_type: IOWarriorType) -> usize {
     match device_type {
-        IOWarriorType::IOWarrior24 | IOWarriorType::IOWarrior24PowerVampire => 3,
+        IOWarriorType::IOWarrior24
+        | IOWarriorType::IOWarrior24Dongle
+        | IOWarriorType::IOWarrior24PowerVampire => 3,
         IOWarriorType::IOWarrior28
         | IOWarriorType::IOWarrior28Dongle
         | IOWarriorType::IOWarrior28L
@@ -202,10 +211,12 @@ fn get_standard_report_size(device_type: IOWarriorType) -> usize {
     }
 }
 
+#[inline]
 fn get_special_report_size(device_type: IOWarriorType) -> usize {
     match device_type {
         IOWarriorType::IOWarrior40
         | IOWarriorType::IOWarrior24
+        | IOWarriorType::IOWarrior24Dongle
         | IOWarriorType::IOWarrior24PowerVampire
         | IOWarriorType::IOWarrior28L => 8,
         IOWarriorType::IOWarrior28
@@ -216,10 +227,10 @@ fn get_special_report_size(device_type: IOWarriorType) -> usize {
     }
 }
 
-fn is_dongle(pipe: &mut Pipe) -> Result<bool, HidError> {
+fn is_dongle(pipe: &mut Pipe, report_id: ReportId) -> Result<bool, HidError> {
     let mut report = pipe.create_report();
 
-    report.buffer[0] = ReportId::AdcSetup.get_value();
+    report.buffer[0] = report_id.get_value();
     report.buffer[1] = 0x00;
 
     match pipe.write_report(&mut report) {
@@ -239,6 +250,7 @@ fn is_dongle(pipe: &mut Pipe) -> Result<bool, HidError> {
     }
 }
 
+#[inline]
 fn get_pins_report(data: &IOWarriorData, pipe_1_special: &mut Pipe) -> Result<Report, HidError> {
     {
         let mut report = pipe_1_special.create_report();

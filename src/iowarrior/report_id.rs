@@ -13,6 +13,7 @@ pub enum ReportId {
     SpiTransfer = 0x09,
     GpioReadWrite = 0x00,
     GpioSpecialRead = 0xFF,
+    IrSetup = 0x0C,
 }
 
 impl fmt::Display for ReportId {

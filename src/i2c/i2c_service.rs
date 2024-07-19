@@ -36,7 +36,9 @@ pub fn new(
 fn get_i2c_pins(device_type: IOWarriorType) -> Vec<u8> {
     match device_type {
         IOWarriorType::IOWarrior40 => vec![pin!(0, 6), pin!(0, 7)],
-        IOWarriorType::IOWarrior24 | IOWarriorType::IOWarrior24PowerVampire => {
+        IOWarriorType::IOWarrior24
+        | IOWarriorType::IOWarrior24Dongle
+        | IOWarriorType::IOWarrior24PowerVampire => {
             vec![pin!(0, 1), pin!(0, 2)]
         }
         IOWarriorType::IOWarrior28 | IOWarriorType::IOWarrior28Dongle => {
@@ -69,6 +71,7 @@ fn send_enable_i2c(
         }
         IOWarriorType::IOWarrior40
         | IOWarriorType::IOWarrior24
+        | IOWarriorType::IOWarrior24Dongle
         | IOWarriorType::IOWarrior24PowerVampire
         | IOWarriorType::IOWarrior28
         | IOWarriorType::IOWarrior28Dongle
@@ -209,6 +212,7 @@ fn read_report(
             },
             IOWarriorType::IOWarrior40
             | IOWarriorType::IOWarrior24
+            | IOWarriorType::IOWarrior24Dongle
             | IOWarriorType::IOWarrior24PowerVampire
             | IOWarriorType::IOWarrior28L
             | IOWarriorType::IOWarrior56
@@ -228,6 +232,7 @@ fn read_report(
         }
         IOWarriorType::IOWarrior40
         | IOWarriorType::IOWarrior24
+        | IOWarriorType::IOWarrior24Dongle
         | IOWarriorType::IOWarrior24PowerVampire
         | IOWarriorType::IOWarrior28L => {}
     }

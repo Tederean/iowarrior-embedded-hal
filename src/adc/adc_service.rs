@@ -72,6 +72,7 @@ fn get_adc_type(data: &IOWarriorData) -> Option<IOWarriorADCType> {
         },
         IOWarriorType::IOWarrior40
         | IOWarriorType::IOWarrior24
+        | IOWarriorType::IOWarrior24Dongle
         | IOWarriorType::IOWarrior24PowerVampire
         | IOWarriorType::IOWarrior56Dongle
         | IOWarriorType::IOWarrior28Dongle

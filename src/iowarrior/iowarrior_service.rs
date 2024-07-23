@@ -172,7 +172,7 @@ pub(crate) fn open_iowarrior(
         data.device_type = IOWarriorType::IOWarrior56Dongle;
     }
 
-    else if data.device_type == IOWarriorType::IOWarrior28 && is_dongle(pipe_3.as_mut().unwrap(), ReportId::AdcSetup)? {
+    else if data.device_type == IOWarriorType::IOWarrior28 && is_dongle(&mut pipe_1, ReportId::PwmSetup)? {
         data.device_type = IOWarriorType::IOWarrior28Dongle;
     }
 

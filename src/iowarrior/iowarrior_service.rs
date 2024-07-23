@@ -147,7 +147,7 @@ pub(crate) fn open_iowarrior(
             special_report_size,
         )
     });
-    let pipe_3 = pipe_impl_3.map(|x| {
+    let mut pipe_3 = pipe_impl_3.map(|x| {
         Pipe::new(
             x,
             PipeName::ADCMode,
@@ -164,20 +164,34 @@ pub(crate) fn open_iowarrior(
         special_report_size,
     };
 
-    if data.device_type == IOWarriorType::IOWarrior24 && is_dongle(&mut pipe_1, ReportId::IrSetup)?
-    {
-        data.device_type = IOWarriorType::IOWarrior24Dongle;
-    } else if data.device_type == IOWarriorType::IOWarrior56
-        && is_dongle(&mut pipe_1, ReportId::AdcSetup)?
-    {
-        data.device_type = IOWarriorType::IOWarrior56Dongle;
-    } else if data.device_type == IOWarriorType::IOWarrior28
-        && is_dongle(&mut pipe_1, ReportId::PwmSetup)?
-    {
-        data.device_type = IOWarriorType::IOWarrior28Dongle;
-    }
-
     let pins_report = get_pins_report(&data, &mut pipe_1)?;
+
+    match data.device_type {
+        IOWarriorType::IOWarrior24 => {
+            if is_dongle(&mut pipe_1, ReportId::IrSetup)? {
+                data.device_type = IOWarriorType::IOWarrior24Dongle;
+            }
+        },
+        IOWarriorType::IOWarrior28 => {
+            // This is ugly. This should always work regardless of OS/backend.
+
+            #[cfg(target_os = "linux")]
+            if is_dongle(&mut pipe_1, ReportId::PwmSetup)? {
+                data.device_type = IOWarriorType::IOWarrior28Dongle;
+            }
+
+            #[cfg(not(target_os = "linux"))]
+            if is_dongle(pipe_3.as_mut().unwrap(), ReportId::AdcSetup)? {
+                data.device_type = IOWarriorType::IOWarrior28Dongle;
+            }
+        },
+        IOWarriorType::IOWarrior56 => {
+            if is_dongle(&mut pipe_1, ReportId::AdcSetup)? {
+                data.device_type = IOWarriorType::IOWarrior56Dongle;
+            }
+        },
+        _ => {},
+    }
 
     let mut_data = IOWarriorMutData {
         pins_in_use: vec![],

@@ -147,6 +147,8 @@ pub(crate) fn open_iowarrior(
             special_report_size,
         )
     });
+
+    #[allow(unused_mut)]
     let mut pipe_3 = pipe_impl_3.map(|x| {
         Pipe::new(
             x,

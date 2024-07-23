@@ -147,7 +147,7 @@ pub(crate) fn open_iowarrior(
             special_report_size,
         )
     });
-    let mut pipe_3 = pipe_impl_3.map(|x| {
+    let pipe_3 = pipe_impl_3.map(|x| {
         Pipe::new(
             x,
             PipeName::ADCMode,
@@ -164,15 +164,16 @@ pub(crate) fn open_iowarrior(
         special_report_size,
     };
 
-    if data.device_type == IOWarriorType::IOWarrior24 && is_dongle(&mut pipe_1, ReportId::IrSetup)? {
+    if data.device_type == IOWarriorType::IOWarrior24 && is_dongle(&mut pipe_1, ReportId::IrSetup)?
+    {
         data.device_type = IOWarriorType::IOWarrior24Dongle;
-    }
-
-    else if data.device_type == IOWarriorType::IOWarrior56 && is_dongle(&mut pipe_1, ReportId::AdcSetup)? {
+    } else if data.device_type == IOWarriorType::IOWarrior56
+        && is_dongle(&mut pipe_1, ReportId::AdcSetup)?
+    {
         data.device_type = IOWarriorType::IOWarrior56Dongle;
-    }
-
-    else if data.device_type == IOWarriorType::IOWarrior28 && is_dongle(&mut pipe_1, ReportId::PwmSetup)? {
+    } else if data.device_type == IOWarriorType::IOWarrior28
+        && is_dongle(&mut pipe_1, ReportId::PwmSetup)?
+    {
         data.device_type = IOWarriorType::IOWarrior28Dongle;
     }
 

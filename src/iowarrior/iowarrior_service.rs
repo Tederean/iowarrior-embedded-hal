@@ -105,9 +105,12 @@ pub(crate) fn open_iowarrior(
     pipe_info_2: Option<PipeInfo>,
     pipe_info_3: Option<PipeInfo>,
     device_serial: String,
-    device_type: IOWarriorType,
+    mut device_type: IOWarriorType,
 ) -> Result<IOWarrior, HidError> {
     let iowarrior_lock = Arc::new(IOWarriorLock::new(device_serial.clone())?);
+
+    let standard_report_size = get_standard_report_size(device_type);
+    let special_report_size = get_special_report_size(device_type);
 
     let mut pipe_impl_0 = pipe_info_0.open()?;
     let pipe_impl_1 = pipe_info_1.open()?;
@@ -124,22 +127,21 @@ pub(crate) fn open_iowarrior(
 
     let device_revision = pipe_impl_0.revision()?;
 
-    let standard_report_size = get_standard_report_size(device_type);
-    let special_report_size = get_special_report_size(device_type);
-
-    let pipe_0 = Pipe::new(
+    let mut pipe_0 = Pipe::new(
         pipe_impl_0,
         PipeName::IOPins,
         iowarrior_lock.clone(),
         standard_report_size,
     );
+
     let mut pipe_1 = Pipe::new(
         pipe_impl_1,
         PipeName::SpecialMode,
         iowarrior_lock.clone(),
         special_report_size,
     );
-    let pipe_2 = pipe_impl_2.map(|x| {
+
+    let mut pipe_2 = pipe_impl_2.map(|x| {
         Pipe::new(
             x,
             PipeName::I2CMode,
@@ -148,7 +150,6 @@ pub(crate) fn open_iowarrior(
         )
     });
 
-    #[allow(unused_mut)]
     let mut pipe_3 = pipe_impl_3.map(|x| {
         Pipe::new(
             x,
@@ -158,42 +159,23 @@ pub(crate) fn open_iowarrior(
         )
     });
 
-    let mut data = IOWarriorData {
+    check_dongle(
+        &mut pipe_0,
+        &mut pipe_1,
+        &mut pipe_2,
+        &mut pipe_3,
+        &mut device_type,
+    )?;
+
+    let pins_report = get_pins_report(&mut pipe_1, standard_report_size)?;
+
+    let data = IOWarriorData {
         device_serial,
         device_revision,
         device_type,
         standard_report_size,
         special_report_size,
     };
-
-    let pins_report = get_pins_report(&data, &mut pipe_1)?;
-
-    match data.device_type {
-        IOWarriorType::IOWarrior24 => {
-            if is_dongle(&mut pipe_1, ReportId::IrSetup)? {
-                data.device_type = IOWarriorType::IOWarrior24Dongle;
-            }
-        },
-        IOWarriorType::IOWarrior28 => {
-            // This is ugly. This should always work regardless of OS/backend.
-
-            #[cfg(target_os = "linux")]
-            if is_dongle(&mut pipe_1, ReportId::PwmSetup)? {
-                data.device_type = IOWarriorType::IOWarrior28Dongle;
-            }
-
-            #[cfg(not(target_os = "linux"))]
-            if is_dongle(pipe_3.as_mut().unwrap(), ReportId::AdcSetup)? {
-                data.device_type = IOWarriorType::IOWarrior28Dongle;
-            }
-        },
-        IOWarriorType::IOWarrior56 => {
-            if is_dongle(&mut pipe_1, ReportId::AdcSetup)? {
-                data.device_type = IOWarriorType::IOWarrior56Dongle;
-            }
-        },
-        _ => {},
-    }
 
     let mut_data = IOWarriorMutData {
         pins_in_use: vec![],
@@ -210,6 +192,69 @@ pub(crate) fn open_iowarrior(
         data: Arc::new(data),
         mut_data_mutex: Arc::new(Mutex::new(mut_data)),
     })
+}
+
+#[inline]
+#[allow(unused_mut, unused_variables)]
+fn check_dongle(
+    mut pipe_0: &mut Pipe,
+    mut pipe_1: &mut Pipe,
+    mut pipe_2: &mut Option<Pipe>,
+    mut pipe_3: &mut Option<Pipe>,
+    device_type: &mut IOWarriorType,
+) -> Result<(), HidError> {
+    match device_type {
+        IOWarriorType::IOWarrior24 => {
+            if is_dongle(&mut pipe_1, ReportId::IrSetup)? {
+                *device_type = IOWarriorType::IOWarrior24Dongle;
+            }
+        }
+        IOWarriorType::IOWarrior28 => {
+            cfg_if::cfg_if! {
+                // This is sadly dependent on operating system.
+
+                if #[cfg(target_os = "linux")] {
+                    if is_dongle(&mut pipe_1, ReportId::PwmSetup)? {
+                        *device_type = IOWarriorType::IOWarrior28Dongle;
+                    }
+                } else {
+                    if is_dongle(pipe_3.as_mut().unwrap(), ReportId::AdcSetup)? {
+                        *device_type = IOWarriorType::IOWarrior28Dongle;
+                    }
+                }
+            }
+        }
+        IOWarriorType::IOWarrior56 => {
+            if is_dongle(&mut pipe_1, ReportId::AdcSetup)? {
+                *device_type = IOWarriorType::IOWarrior56Dongle;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn is_dongle(pipe: &mut Pipe, report_id: ReportId) -> Result<bool, HidError> {
+    let mut report = pipe.create_report();
+
+    report.buffer[0] = report_id.get_value();
+    report.buffer[1] = 0x00;
+
+    match pipe.write_report(&mut report) {
+        Ok(_) => Ok(false),
+        Err(error) => {
+            match error {
+                HidError::IncompleteSendError { sent, all: _ } => {
+                    if sent == 0 {
+                        return Ok(true);
+                    }
+                }
+                _ => {}
+            }
+
+            Err(error)
+        }
+    }
 }
 
 #[inline]
@@ -244,31 +289,11 @@ fn get_special_report_size(device_type: IOWarriorType) -> usize {
     }
 }
 
-fn is_dongle(pipe: &mut Pipe, report_id: ReportId) -> Result<bool, HidError> {
-    let mut report = pipe.create_report();
-
-    report.buffer[0] = report_id.get_value();
-    report.buffer[1] = 0x00;
-
-    match pipe.write_report(&mut report) {
-        Ok(_) => Ok(false),
-        Err(error) => {
-            match error {
-                HidError::IncompleteSendError { sent, all: _ } => {
-                    if sent == 0 {
-                        return Ok(true);
-                    }
-                }
-                _ => {}
-            }
-
-            Err(error)
-        }
-    }
-}
-
 #[inline]
-fn get_pins_report(data: &IOWarriorData, pipe_1_special: &mut Pipe) -> Result<Report, HidError> {
+fn get_pins_report(
+    pipe_1_special: &mut Pipe,
+    standard_report_size: usize,
+) -> Result<Report, HidError> {
     {
         let mut report = pipe_1_special.create_report();
 
@@ -290,7 +315,7 @@ fn get_pins_report(data: &IOWarriorData, pipe_1_special: &mut Pipe) -> Result<Re
                 .buffer
                 .iter()
                 .map(|x| *x)
-                .take(data.standard_report_size)
+                .take(standard_report_size)
                 .collect(),
         })
     }

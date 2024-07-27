@@ -24,12 +24,15 @@ libloading = { version = "0.8", optional = true }
 iowkit-sys = { version = "0.1", optional = true }
 
 hidapi = { version = "2.6", default-features = false, optional = true, features = ["windows-native", "linux-native"] }
+
+rusb = { version = "0.9", optional = true }
+
 windows = { version = "0.58", features = ["Win32_Devices_HumanInterfaceDevice"], optional = true }
 nix = { version = "0.29", features = ["ioctl"], optional = true }
 
 [features]
-default = ["usbhid"]
+default = ["hid"]
 embedded-hal-0 = ["dep:embedded-hal-0"]
 iowkit = ["dep:libloading", "dep:iowkit-sys"]
-usbhid = ["dep:hidapi", "dep:windows", "dep:nix"]
-
+hid = ["dep:hidapi", "dep:windows", "dep:nix"]
+usb = ["dep:rusb", "dep:windows", "dep:nix"]

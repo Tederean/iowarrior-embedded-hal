@@ -76,7 +76,7 @@ fn get_iowkit_library(
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PipeInfo {
     library_container: Arc<LibraryContainer>,
     device_handle: IowkitHandle,
@@ -157,13 +157,6 @@ impl PipeInfo {
     }
 }
 
-impl fmt::Display for PipeInfo {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-#[derive(Debug)]
 pub struct PipeImpl {
     library_container: Arc<LibraryContainer>,
     device_handle: IowkitHandle,
@@ -218,11 +211,5 @@ impl PipeImpl {
         } as u16;
 
         Ok(Some(revision))
-    }
-}
-
-impl fmt::Display for PipeImpl {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
     }
 }

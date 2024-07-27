@@ -2,6 +2,7 @@ use crate::iowarrior::{HidError, IOWarriorType};
 use iowkit_sys::{Iowkit, PCHAR, ULONG};
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::fmt;
+use std::fmt::{Display, Formatter};
 use std::os::raw::c_void;
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
@@ -14,6 +15,12 @@ struct IowkitHandle(NonNull<c_void>);
 impl IowkitHandle {
     fn as_ptr(&self) -> *mut c_void {
         self.0.as_ptr()
+    }
+}
+
+impl Display for IowkitHandle {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 
@@ -80,9 +87,9 @@ fn get_iowkit_library(
 pub struct PipeInfo {
     library_container: Arc<LibraryContainer>,
     device_handle: IowkitHandle,
-    interface: u8,
     product_id: u16,
-    device_serial: Option<String>,
+    pipe: u8,
+    device_uuid: String,
 }
 
 impl PipeInfo {
@@ -105,30 +112,15 @@ impl PipeInfo {
                 Some(x) => x.pipe_count(),
             };
 
-            let device_serial = {
-                let mut raw_device_serial_number = [0u16; 9];
-
-                let device_serial_number_result = unsafe {
-                    library_container.library.IowKitGetSerialNumber(
-                        handle.as_ptr(),
-                        raw_device_serial_number.as_mut_ptr(),
-                    )
-                };
-
-                if device_serial_number_result > 0i32 {
-                    Some(String::from_utf16_lossy(&raw_device_serial_number))
-                } else {
-                    None
-                }
-            };
+            let device_uuid = handle.to_string();
 
             for interface in 0..pipe_count {
                 pipes.push(PipeInfo {
                     library_container: library_container.clone(),
                     device_handle: handle.clone(),
-                    interface,
                     product_id,
-                    device_serial: device_serial.clone(),
+                    pipe: interface,
+                    device_uuid: device_uuid.clone(),
                 });
             }
         }
@@ -136,23 +128,50 @@ impl PipeInfo {
         Ok(pipes)
     }
 
-    pub fn pipe(&self) -> u8 {
-        self.interface
-    }
-
-    pub fn serial_number(&self) -> Option<&str> {
-        self.device_serial.as_ref().map(|s| &**s)
-    }
-
     pub fn product_id(&self) -> u16 {
         self.product_id
+    }
+
+    pub fn pipe(&self) -> u8 {
+        self.pipe
+    }
+
+    pub fn uuid(&self) -> &str {
+        self.device_uuid.as_ref()
+    }
+
+    pub fn metadata(&self) -> Result<(Option<String>, Option<u16>), HidError> {
+        let device_serial = {
+            let mut raw_device_serial_number = [0u16; 9];
+
+            let device_serial_number_result = unsafe {
+                self.library_container.library.IowKitGetSerialNumber(
+                    self.device_handle.as_ptr(),
+                    raw_device_serial_number.as_mut_ptr(),
+                )
+            };
+
+            if device_serial_number_result > 0i32 {
+                Some(String::from_utf16_lossy(&raw_device_serial_number))
+            } else {
+                None
+            }
+        };
+
+        let device_revision = unsafe {
+            self.library_container
+                .library
+                .IowKitGetRevision(self.device_handle.as_ptr())
+        } as u16;
+
+        Ok((device_serial, Some(device_revision)))
     }
 
     pub fn open(self) -> Result<PipeImpl, HidError> {
         Ok(PipeImpl {
             library_container: self.library_container,
             device_handle: self.device_handle,
-            interface: self.interface,
+            pipe: self.pipe,
         })
     }
 }
@@ -160,7 +179,7 @@ impl PipeInfo {
 pub struct PipeImpl {
     library_container: Arc<LibraryContainer>,
     device_handle: IowkitHandle,
-    interface: u8,
+    pipe: u8,
 }
 
 impl PipeImpl {
@@ -168,7 +187,7 @@ impl PipeImpl {
         let written_bytes = unsafe {
             self.library_container.library.IowKitWrite(
                 self.device_handle.as_ptr(),
-                self.interface as ULONG,
+                self.pipe as ULONG,
                 report.as_ptr() as PCHAR,
                 report.len() as ULONG,
             )
@@ -181,7 +200,7 @@ impl PipeImpl {
         let read_bytes = unsafe {
             self.library_container.library.IowKitReadNonBlocking(
                 self.device_handle.as_ptr(),
-                self.interface as ULONG,
+                self.pipe as ULONG,
                 report.as_mut_ptr() as PCHAR,
                 report.len() as ULONG,
             )
@@ -194,22 +213,12 @@ impl PipeImpl {
         let read_bytes = unsafe {
             self.library_container.library.IowKitRead(
                 self.device_handle.as_ptr(),
-                self.interface as ULONG,
+                self.pipe as ULONG,
                 report.as_mut_ptr() as PCHAR,
                 report.len() as ULONG,
             )
         } as usize;
 
         Ok(read_bytes)
-    }
-
-    pub fn revision(&mut self) -> Result<Option<u16>, HidError> {
-        let revision = unsafe {
-            self.library_container
-                .library
-                .IowKitGetRevision(self.device_handle.as_ptr())
-        } as u16;
-
-        Ok(Some(revision))
     }
 }

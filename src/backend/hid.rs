@@ -8,6 +8,8 @@ use std::sync::Arc;
 pub struct PipeInfo {
     api: Arc<HidApi>,
     device_info: DeviceInfo,
+    device_uuid: String,
+    device_path: String,
 }
 
 impl PipeInfo {
@@ -23,23 +25,43 @@ impl PipeInfo {
 
         Ok(api
             .device_list()
-            .map(|x| PipeInfo {
-                api: api.clone(),
-                device_info: x.clone(),
+            .filter_map(|device_info| {
+                let device_path = match device_info.path().to_str() {
+                    Ok(x) => x.to_string(),
+                    Err(_) => return None,
+                };
+
+                let device_uuid = get_device_uuid(&device_path);
+
+                Some(PipeInfo {
+                    api: api.clone(),
+                    device_info: device_info.clone(),
+                    device_uuid,
+                    device_path,
+                })
             })
             .collect())
+    }
+
+    pub fn product_id(&self) -> u16 {
+        self.device_info.product_id()
     }
 
     pub fn pipe(&self) -> u8 {
         self.device_info.interface_number() as u8
     }
 
-    pub fn serial_number(&self) -> Option<&str> {
-        self.device_info.serial_number()
+    pub fn uuid(&self) -> &str {
+        self.device_uuid.as_ref()
     }
 
-    pub fn product_id(&self) -> u16 {
-        self.device_info.product_id()
+    pub fn metadata(&self) -> Result<(Option<String>, Option<u16>), HidError> {
+        let device_revision = get_revision(&self.device_path)?;
+
+        Ok((
+            self.device_info.serial_number().map(|x| x.to_string()),
+            device_revision,
+        ))
     }
 
     pub fn open(self) -> Result<PipeImpl, HidError> {
@@ -48,16 +70,12 @@ impl PipeInfo {
             .open_path(self.device_info.path())
             .map_err(|x| map_hid_error(x))?;
 
-        Ok(PipeImpl {
-            hid_device,
-            device_info: self.device_info,
-        })
+        Ok(PipeImpl { hid_device })
     }
 }
 
 pub struct PipeImpl {
     hid_device: HidDevice,
-    device_info: DeviceInfo,
 }
 
 impl PipeImpl {
@@ -80,14 +98,17 @@ impl PipeImpl {
 
         self.hid_device.read(report).map_err(|x| map_hid_error(x))
     }
+}
 
-    pub fn revision(&mut self) -> Result<Option<u16>, HidError> {
-        let path = match self.device_info.path().to_str() {
-            Ok(x) => x,
-            Err(_) => return Err(HidError::InitializationError),
-        };
-
-        get_revision(&path)
+#[inline]
+fn get_device_uuid(path: &str) -> String {
+    cfg_if::cfg_if! {
+        if #[cfg(target_os = "windows")] {
+            String::from(&path[path.len() - 37..path.len() - 1])
+        }
+        else {
+            compile_error!("TODO: Implement on macOS");
+        }
     }
 }
 

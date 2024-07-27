@@ -4,7 +4,7 @@ use std::fmt;
 #[derive(Debug)]
 pub struct IOWarriorData {
     pub device_revision: Option<u16>,
-    pub device_serial: String,
+    pub device_serial: Option<String>,
     pub device_type: IOWarriorType,
     pub standard_report_size: usize,
     pub special_report_size: usize,

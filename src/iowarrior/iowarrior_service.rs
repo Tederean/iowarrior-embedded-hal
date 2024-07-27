@@ -11,50 +11,42 @@ pub fn get_iowarriors() -> Result<Vec<IOWarriorInfo>, HidError> {
 
     let pipe_map = all_pipes
         .into_iter()
-        .filter_map(|x| {
-            let device_serial = match x.serial_number() {
-                None => return None,
-                Some(x) => x.to_string(),
-            };
-
-            Some((x, device_serial))
-        })
-        .into_group_map_by(|x| x.1.clone());
+        .into_group_map_by(|x| x.uuid().to_string());
 
     Ok(pipe_map
         .into_iter()
-        .filter_map(|(device_serial, mut pipes)| {
-            pipes.sort_by_key(|x| x.0.pipe());
+        .filter_map(|(device_uuid, mut pipes)| {
+            pipes.sort_by_key(|x| x.pipe());
             pipes.reverse();
 
             let pipe_0 = match pipes.pop() {
                 None => return None,
-                Some(x) => match x.0.pipe() {
-                    0 => x.0,
+                Some(x) => match x.pipe() {
+                    0 => x,
                     _ => return None,
                 },
             };
 
             let pipe_1 = match pipes.pop() {
                 None => return None,
-                Some(x) => match x.0.pipe() {
-                    1 => x.0,
+                Some(x) => match x.pipe() {
+                    1 => x,
                     _ => return None,
                 },
             };
 
             let pipe_2 = match pipes.pop() {
                 None => None,
-                Some(x) => match x.0.pipe() {
-                    2 => Some(x.0),
+                Some(x) => match x.pipe() {
+                    2 => Some(x),
                     _ => return None,
                 },
             };
 
             let pipe_3 = match pipes.pop() {
                 None => None,
-                Some(x) => match x.0.pipe() {
-                    3 => Some(x.0),
+                Some(x) => match x.pipe() {
+                    3 => Some(x),
                     _ => return None,
                 },
             };
@@ -86,14 +78,21 @@ pub fn get_iowarriors() -> Result<Vec<IOWarriorInfo>, HidError> {
                 }
             };
 
+            let (device_serial, device_revision) = match pipe_0.metadata() {
+                Ok(x) => x,
+                Err(_) => return None,
+            };
+
             Some(IOWarriorInfo::new(
                 pipe_0,
                 pipe_1,
                 pipe_2,
                 pipe_3,
-                device_serial,
                 device_type,
                 possible_device_types,
+                device_uuid.to_string(),
+                device_serial,
+                device_revision,
             ))
         })
         .collect())
@@ -104,60 +103,49 @@ pub(crate) fn open_iowarrior(
     pipe_info_1: PipeInfo,
     pipe_info_2: Option<PipeInfo>,
     pipe_info_3: Option<PipeInfo>,
-    device_serial: String,
+    device_uuid: String,
+    device_serial: Option<String>,
+    device_revision: Option<u16>,
     mut device_type: IOWarriorType,
 ) -> Result<IOWarrior, HidError> {
-    let iowarrior_lock = Arc::new(IOWarriorLock::new(device_serial.clone())?);
+    let iowarrior_lock = Arc::new(IOWarriorLock::new(device_uuid)?);
 
     let standard_report_size = get_standard_report_size(device_type);
     let special_report_size = get_special_report_size(device_type);
 
-    let mut pipe_impl_0 = pipe_info_0.open()?;
-    let pipe_impl_1 = pipe_info_1.open()?;
-
-    let pipe_impl_2 = match pipe_info_2 {
-        None => None,
-        Some(x) => Some(x.open()?),
-    };
-
-    let pipe_impl_3 = match pipe_info_3 {
-        None => None,
-        Some(x) => Some(x.open()?),
-    };
-
-    let device_revision = pipe_impl_0.revision()?;
-
     let mut pipe_0 = Pipe::new(
-        pipe_impl_0,
+        pipe_info_0.open()?,
         PipeName::IOPins,
         iowarrior_lock.clone(),
         standard_report_size,
     );
 
     let mut pipe_1 = Pipe::new(
-        pipe_impl_1,
+        pipe_info_1.open()?,
         PipeName::SpecialMode,
         iowarrior_lock.clone(),
         special_report_size,
     );
 
-    let mut pipe_2 = pipe_impl_2.map(|x| {
-        Pipe::new(
-            x,
+    let mut pipe_2 = match pipe_info_2 {
+        None => None,
+        Some(x) => Some(Pipe::new(
+            x.open()?,
             PipeName::I2CMode,
             iowarrior_lock.clone(),
             special_report_size,
-        )
-    });
+        )),
+    };
 
-    let mut pipe_3 = pipe_impl_3.map(|x| {
-        Pipe::new(
-            x,
+    let mut pipe_3 = match pipe_info_3 {
+        None => None,
+        Some(x) => Some(Pipe::new(
+            x.open()?,
             PipeName::ADCMode,
             iowarrior_lock.clone(),
             special_report_size,
-        )
-    });
+        )),
+    };
 
     check_dongle(
         &mut pipe_0,

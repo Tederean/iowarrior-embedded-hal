@@ -23,18 +23,18 @@ impl fmt::Display for IOWarrior {
 
 impl IOWarrior {
     #[inline]
-    pub fn get_revision(&self) -> Option<u16> {
-        self.data.device_revision
-    }
-
-    #[inline]
     pub fn get_type(&self) -> IOWarriorType {
         self.data.device_type
     }
 
     #[inline]
-    pub fn get_serial_number(&self) -> String {
-        self.data.device_serial.clone()
+    pub fn serial_number(&self) -> Option<&str> {
+        self.data.device_serial.as_ref().map(|s| &**s)
+    }
+
+    #[inline]
+    pub fn revision(&self) -> Option<u16> {
+        self.data.device_revision
     }
 
     #[inline]

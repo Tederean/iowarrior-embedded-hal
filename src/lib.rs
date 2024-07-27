@@ -1,5 +1,5 @@
 pub mod adc;
-pub (crate) mod backend;
+pub(crate) mod backend;
 pub mod bits;
 pub mod delay;
 pub mod digital;

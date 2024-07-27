@@ -1,8 +1,8 @@
+use crate::backend::{PipeImpl, PipeInfo};
+use crate::iowarrior::HidError;
 use std::fmt;
 use std::fmt::Debug;
 use std::path::Path;
-use crate::backend::{PipeImpl, PipeInfo};
-use crate::iowarrior::HidError;
 
 #[allow(dead_code)]
 pub const VENDOR_ID: u16 = 0x07c0;

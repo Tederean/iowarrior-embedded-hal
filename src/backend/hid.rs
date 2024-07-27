@@ -1,8 +1,8 @@
+use crate::backend::{get_revision, VENDOR_ID};
 use crate::iowarrior::HidError;
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 use std::ffi::CString;
 use std::sync::Arc;
-use crate::backend::{get_revision, VENDOR_ID};
 
 #[derive(Clone)]
 pub struct PipeInfo {

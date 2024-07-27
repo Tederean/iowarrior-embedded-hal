@@ -1,8 +1,7 @@
 use crate::iowarrior::HidError;
 
 #[derive(Clone)]
-pub struct PipeInfo {
-}
+pub struct PipeInfo {}
 
 impl PipeInfo {
     pub fn collect() -> Result<Vec<PipeInfo>, HidError> {
@@ -26,8 +25,7 @@ impl PipeInfo {
     }
 }
 
-pub struct PipeImpl {
-}
+pub struct PipeImpl {}
 
 impl PipeImpl {
     pub fn write_report(&mut self, _report: &[u8]) -> Result<usize, HidError> {

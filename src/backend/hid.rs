@@ -57,11 +57,9 @@ impl PipeInfo {
 
     pub fn metadata(&self) -> Result<(Option<String>, Option<u16>), HidError> {
         let device_revision = get_revision(&self.device_path)?;
+        let device_serial = self.device_info.serial_number().map(|x| x.to_string());
 
-        Ok((
-            self.device_info.serial_number().map(|x| x.to_string()),
-            device_revision,
-        ))
+        Ok((device_serial, device_revision))
     }
 
     pub fn open(self) -> Result<PipeImpl, HidError> {

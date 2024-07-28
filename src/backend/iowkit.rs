@@ -141,30 +141,35 @@ impl PipeInfo {
     }
 
     pub fn metadata(&self) -> Result<(Option<String>, Option<u16>), HidError> {
-        let device_serial = {
-            let mut raw_device_serial_number = [0u16; 9];
+        let device_serial = self.serial_number();
+        let device_revision = Some(self.revision());
 
-            let device_serial_number_result = unsafe {
-                self.library_container.library.IowKitGetSerialNumber(
-                    self.device_handle.as_ptr(),
-                    raw_device_serial_number.as_mut_ptr(),
-                )
-            };
+        Ok((device_serial, device_revision))
+    }
 
-            if device_serial_number_result > 0i32 {
-                Some(String::from_utf16_lossy(&raw_device_serial_number))
-            } else {
-                None
-            }
+    fn serial_number(&self) -> Option<String> {
+        let mut raw_device_serial_number = [0u16; 9];
+
+        let device_serial_number_result = unsafe {
+            self.library_container.library.IowKitGetSerialNumber(
+                self.device_handle.as_ptr(),
+                raw_device_serial_number.as_mut_ptr(),
+            )
         };
 
-        let device_revision = unsafe {
+        if device_serial_number_result > 0i32 {
+            Some(String::from_utf16_lossy(&raw_device_serial_number))
+        } else {
+            None
+        }
+    }
+
+    fn revision(&self) -> u16 {
+        (unsafe {
             self.library_container
                 .library
                 .IowKitGetRevision(self.device_handle.as_ptr())
-        } as u16;
-
-        Ok((device_serial, Some(device_revision)))
+        }) as u16
     }
 
     pub fn open(self) -> Result<PipeImpl, HidError> {

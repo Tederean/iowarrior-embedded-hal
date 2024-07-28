@@ -1,11 +1,13 @@
-use crate::backend::VENDOR_ID;
+use crate::backend::{VENDOR_ID};
 use crate::iowarrior::HidError;
-use rusb::DeviceDescriptor;
+use rusb::{Device, DeviceDescriptor, DeviceHandle, Error, GlobalContext};
 use std::sync::Arc;
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct PipeInfo {
     device_descriptor: Arc<DeviceDescriptor>,
+    device: Arc<Device<GlobalContext>>,
     interface: u8,
     device_uuid: String,
 }
@@ -18,7 +20,7 @@ impl PipeInfo {
 
         for device in device_list.iter() {
             let device_descriptor = match device.device_descriptor() {
-                Ok(x) => Arc::new(x),
+                Ok(x) => x,
                 Err(_) => continue,
             };
 
@@ -33,12 +35,15 @@ impl PipeInfo {
             };
 
             let device_uuid = format!("{0}-{1}", device.bus_number(), device.address());
+            let device_arc = Arc::new(device);
+            let device_descriptor_arc = Arc::new(device_descriptor);
 
             for interface in config_descriptor.interfaces() {
                 pipes.push(PipeInfo {
-                    device_descriptor: device_descriptor.clone(),
+                    device_descriptor: device_descriptor_arc.clone(),
                     interface: interface.number(),
                     device_uuid: device_uuid.clone(),
+                    device: device_arc.clone(),
                 });
             }
         }
@@ -59,7 +64,43 @@ impl PipeInfo {
     }
 
     pub fn metadata(&self) -> Result<(Option<String>, Option<u16>), HidError> {
-        todo!()
+        let device_handle = self.device.open().map_err(|x| map_usb_error(x))?;
+
+        let device_serial = self.serial_number(&device_handle)?;
+        let device_revision = self.revision(&device_handle)?;
+
+        Ok((device_serial, device_revision))
+    }
+
+    fn serial_number(&self, device_handle: &DeviceHandle<GlobalContext>) -> Result<Option<String>, HidError> {
+        let timeout = Duration::from_millis(100);
+
+        let languages = device_handle.read_languages(timeout).map_err(|x| map_usb_error(x))?;
+
+        let language = match languages.get(0) {
+            None => return Ok(None),
+            Some(x) => x.clone(),
+        };
+
+        let device_serial = match device_handle.read_serial_number_string(language, &self.device_descriptor, timeout) {
+            Ok(x) => Some(x),
+            Err(x) => {
+                match x {
+                    Error::InvalidParam => None,
+                    _ => return Err(map_usb_error(x)),
+                }
+            }
+        };
+
+        Ok(device_serial)
+    }
+
+    fn revision(&self, _device_handle: &DeviceHandle<GlobalContext>) -> Result<Option<u16>, HidError> {
+        todo!();
+
+        //let path =
+
+        //get_revision(path)
     }
 
     pub fn open(self) -> Result<PipeImpl, HidError> {
@@ -84,7 +125,7 @@ impl PipeImpl {
 }
 
 #[inline]
-fn map_usb_error(usb_error: rusb::Error) -> HidError {
+fn map_usb_error(usb_error: Error) -> HidError {
     HidError::HidApiError {
         message: usb_error.to_string(),
     }

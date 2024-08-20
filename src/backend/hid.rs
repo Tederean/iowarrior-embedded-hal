@@ -105,7 +105,7 @@ fn get_device_uuid(path: &str) -> String {
             String::from(&path[path.len() - 37..path.len() - 1])
         }
         else {
-            compile_error!("TODO: Implement on macOS");
+            compile_error!("get_device_uuid: Target OS is not supported (yet) by backend hid.");
         }
     }
 }

@@ -40,7 +40,7 @@ impl IOWarriorInfo {
         }
     }
 
-    pub fn get_possible_device_types(&self) -> &[IOWarriorType] {
+    pub fn possible_device_types(&self) -> &[IOWarriorType] {
         self.possible_device_types.as_slice()
     }
 
